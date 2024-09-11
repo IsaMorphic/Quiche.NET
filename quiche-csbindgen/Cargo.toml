@@ -1,18 +1,12 @@
 [package]
 authors = ["IsaMorphic <me@isamorphic.dev>"]
 build = "build.rs"
-name = "quiche"
+name = "quiche-csbindgen"
 version = "0.22.0"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
-
-[features]
-ffi = []
-
-[dependencies]
-quiche = "0.22.0"
 
 [build-dependencies]
 bindgen = "*"
