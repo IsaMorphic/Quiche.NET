@@ -554,7 +554,7 @@ namespace Quiche
     internal unsafe partial struct timespec
     {
         public long tv_sec;
-        public ulong tv_nsec;
+        public long tv_nsec;
     }
 
     [StructLayout(LayoutKind.Sequential)]

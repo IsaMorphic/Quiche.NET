@@ -51,7 +51,7 @@ struct sockaddr_storage {
 
 struct timespec {
     time_t tv_sec;
-    uint64_t tv_nsec;
+    int64_t tv_nsec;
 };
 
 // QUIC transport API.
