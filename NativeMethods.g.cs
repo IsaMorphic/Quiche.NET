@@ -140,10 +140,10 @@ namespace Quiche
         internal static extern int quiche_header_info(byte* buf, nuint buf_len, nuint dcil, uint* version, byte* type_, byte* scid, nuint* scid_len, byte* dcid, nuint* dcid_len, byte* token, nuint* token_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_accept", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Connection* quiche_accept(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, uint local_len, sockaddr* peer, uint peer_len, Config* config);
+        internal static extern Connection* quiche_accept(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config);
 
         [DllImport(__DllName, EntryPoint = "__quiche_connect", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Connection* quiche_connect(byte* server_name, byte* scid, nuint scid_len, sockaddr* local, uint local_len, sockaddr* peer, uint peer_len, Config* config);
+        internal static extern Connection* quiche_connect(byte* server_name, byte* scid, nuint scid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config);
 
         [DllImport(__DllName, EntryPoint = "__quiche_negotiate_version", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern nint quiche_negotiate_version(byte* scid, nuint scid_len, byte* dcid, nuint dcid_len, byte* @out, nuint out_len);
@@ -156,7 +156,7 @@ namespace Quiche
         internal static extern bool quiche_version_is_supported(uint version);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_new_with_tls", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Connection* quiche_conn_new_with_tls(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, uint local_len, sockaddr* peer, uint peer_len, Config* config, void* ssl, [MarshalAs(UnmanagedType.U1)] bool is_server);
+        internal static extern Connection* quiche_conn_new_with_tls(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config, void* ssl, [MarshalAs(UnmanagedType.U1)] bool is_server);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_set_keylog_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -179,10 +179,10 @@ namespace Quiche
         internal static extern nuint quiche_conn_send_quantum(Connection* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_on_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_send_on_path(Connection* conn, byte* @out, nuint out_len, sockaddr* from, uint from_len, sockaddr* to, uint to_len, SendInfo* out_info);
+        internal static extern nint quiche_conn_send_on_path(Connection* conn, byte* @out, nuint out_len, sockaddr* from, int from_len, sockaddr* to, int to_len, SendInfo* out_info);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_quantum_on_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_send_quantum_on_path(Connection* conn, sockaddr* local_addr, uint local_len, sockaddr* peer_addr, uint peer_len);
+        internal static extern nuint quiche_conn_send_quantum_on_path(Connection* conn, sockaddr* local_addr, int local_len, sockaddr* peer_addr, int peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_recv", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern nint quiche_conn_stream_recv(Connection* conn, ulong stream_id, byte* @out, nuint buf_len, bool* fin, ulong* out_error_code);
@@ -367,7 +367,7 @@ namespace Quiche
         internal static extern nint quiche_conn_send_ack_eliciting(Connection* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_ack_eliciting_on_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_send_ack_eliciting_on_path(Connection* conn, sockaddr* local, uint local_len, sockaddr* peer, uint peer_len);
+        internal static extern nint quiche_conn_send_ack_eliciting_on_path(Connection* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_retired_scid_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -389,13 +389,13 @@ namespace Quiche
         internal static extern int quiche_conn_new_scid(Connection* conn, byte* scid, nuint scid_len, byte* reset_token, [MarshalAs(UnmanagedType.U1)] bool retire_if_needed, ulong* scid_seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_probe_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_probe_path(Connection* conn, sockaddr* local, uint local_len, sockaddr* peer, uint peer_len, ulong* seq);
+        internal static extern int quiche_conn_probe_path(Connection* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len, ulong* seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_migrate_source", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_migrate_source(Connection* conn, sockaddr* local, uint local_len, ulong* seq);
+        internal static extern int quiche_conn_migrate_source(Connection* conn, sockaddr* local, int local_len, ulong* seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_migrate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_migrate(Connection* conn, sockaddr* local, uint local_len, sockaddr* peer, uint peer_len, ulong* seq);
+        internal static extern int quiche_conn_migrate(Connection* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len, ulong* seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_path_event_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern PathEvent* quiche_conn_path_event_next(Connection* conn);
@@ -404,22 +404,22 @@ namespace Quiche
         internal static extern int quiche_path_event_type(PathEvent* ev);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_new", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_path_event_new(PathEvent* ev, sockaddr_storage* local, uint* local_len, sockaddr_storage* peer, uint* peer_len);
+        internal static extern void quiche_path_event_new(PathEvent* ev, sockaddr_storage* local, int* local_len, sockaddr_storage* peer, int* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_validated", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_path_event_validated(PathEvent* ev, sockaddr_storage* local, uint* local_len, sockaddr_storage* peer, uint* peer_len);
+        internal static extern void quiche_path_event_validated(PathEvent* ev, sockaddr_storage* local, int* local_len, sockaddr_storage* peer, int* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_failed_validation", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_path_event_failed_validation(PathEvent* ev, sockaddr_storage* local, uint* local_len, sockaddr_storage* peer, uint* peer_len);
+        internal static extern void quiche_path_event_failed_validation(PathEvent* ev, sockaddr_storage* local, int* local_len, sockaddr_storage* peer, int* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_closed", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_path_event_closed(PathEvent* ev, sockaddr_storage* local, uint* local_len, sockaddr_storage* peer, uint* peer_len);
+        internal static extern void quiche_path_event_closed(PathEvent* ev, sockaddr_storage* local, int* local_len, sockaddr_storage* peer, int* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_reused_source_connection_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_path_event_reused_source_connection_id(PathEvent* ev, ulong* id, sockaddr_storage* old_local, uint* old_local_len, sockaddr_storage* old_peer, uint* old_peer_len, sockaddr_storage* local, uint* local_len, sockaddr_storage* peer, uint* peer_len);
+        internal static extern void quiche_path_event_reused_source_connection_id(PathEvent* ev, ulong* id, sockaddr_storage* old_local, int* old_local_len, sockaddr_storage* old_peer, int* old_peer_len, sockaddr_storage* local, int* local_len, sockaddr_storage* peer, int* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_peer_migrated", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_path_event_peer_migrated(PathEvent* ev, sockaddr_storage* local, uint* local_len, sockaddr_storage* peer, uint* peer_len);
+        internal static extern void quiche_path_event_peer_migrated(PathEvent* ev, sockaddr_storage* local, int* local_len, sockaddr_storage* peer, int* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void quiche_path_event_free(PathEvent* ev);
@@ -537,13 +537,13 @@ namespace Quiche
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct sockaddr
     {
-        public uint ss_family;
+        public int ss_family;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct sockaddr_storage
     {
-        public uint ss_family;
+        public int ss_family;
         public fixed byte data[64];
     }
 
@@ -570,18 +570,18 @@ namespace Quiche
     internal unsafe partial struct RecieveInfo
     {
         public sockaddr* from;
-        public uint from_len;
+        public int from_len;
         public sockaddr* to;
-        public uint to_len;
+        public int to_len;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     internal unsafe partial struct SendInfo
     {
         public sockaddr_storage from;
-        public uint from_len;
+        public int from_len;
         public sockaddr_storage to;
-        public uint to_len;
+        public int to_len;
         public timespec at;
     }
 
@@ -638,9 +638,9 @@ namespace Quiche
     internal unsafe partial struct PathStats
     {
         public sockaddr_storage local_addr;
-        public uint local_addr_len;
+        public int local_addr_len;
         public sockaddr_storage peer_addr;
-        public uint peer_addr_len;
+        public int peer_addr_len;
         public nint validation_state;
         [MarshalAs(UnmanagedType.U1)] public bool active;
         public nuint recv;
