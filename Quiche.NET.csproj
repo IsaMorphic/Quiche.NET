@@ -5,15 +5,23 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<OutputType>Library</OutputType>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Compile Remove="quiche-csbindgen\**" />
+		<Compile Remove="quiche-bindgen\**" />
 		<Compile Remove="quiche\**" />
-		<EmbeddedResource Remove="quiche-csbindgen\**" />
+		<EmbeddedResource Remove="quiche-bindgen\**" />
 		<EmbeddedResource Remove="quiche\**" />
-		<None Remove="quiche-csbindgen\**" />
+		<None Remove="quiche-bindgen\**" />
 		<None Remove="quiche\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="csbindgen" Version="1.9.3">
+	    <PrivateAssets>all</PrivateAssets>
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	  </PackageReference>
 	</ItemGroup>
 
 </Project>

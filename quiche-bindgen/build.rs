@@ -14,8 +14,11 @@ fn main() {
     println!("cargo:rustc-link-lib=quiche");
 
     // Windows only
-    #[cfg(target_os = "windows")]
-    println!("cargo:rustc-link-lib=crypt32");
+    #[cfg(target_os = "windows")] 
+    {
+        println!("cargo:rustc-link-lib=crypt32");
+        println!("cargo:rustc-link-lib=bcrypt");
+    }
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
@@ -38,10 +41,12 @@ fn main() {
     // csbindgen code, generate both rust ffi and C# dll import
     csbindgen::Builder::default()
     .input_bindgen_file("src/quiche.rs") // read from bindgen generated code
+    .method_filter(|x| { x.starts_with("quiche") } )
     .rust_file_header("use super::quiche::*;")     // import bindgen generated modules(struct/method)
-    .csharp_entry_point_prefix("csbindgen_") // adjust same signature of rust method and C# EntryPoint
-    .csharp_dll_name("quiche-csbindgen")
+    .rust_method_prefix("__")
+    .csharp_entry_point_prefix("__")
+    .csharp_dll_name("quiche")
     .csharp_namespace("Quiche")
-    .generate_to_file("src/quiche_ffi.rs", "../quiche-csbindgen.g.cs")
+    .generate_to_file("src/quiche_ffi.rs", "../NativeMethods.g.cs")
     .unwrap();
 }

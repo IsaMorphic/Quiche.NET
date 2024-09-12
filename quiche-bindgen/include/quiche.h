@@ -42,11 +42,11 @@ typedef uint32_t sa_family_t;
 
 struct sockaddr {
     sa_family_t ss_family;
-    uint8_t data[16];
 };
 
 struct sockaddr_storage {
     sa_family_t ss_family;
+    uint8_t data[64];
 };
 
 struct timespec {
@@ -139,7 +139,7 @@ int quiche_enable_debug_logging(void (*cb)(const char *line, void *argp),
                                 void *argp);
 
 // Stores configuration shared between multiple connections.
-typedef struct quiche_config quiche_config;
+typedef struct Config quiche_config;
 
 // Creates a config object with the given version.
 quiche_config *quiche_config_new(uint32_t version);
@@ -280,7 +280,7 @@ int quiche_header_info(const uint8_t *buf, size_t buf_len, size_t dcil,
                        uint8_t *token, size_t *token_len);
 
 // A QUIC connection.
-typedef struct quiche_conn quiche_conn;
+typedef struct Connection quiche_conn;
 
 // Creates a new server-side connection.
 quiche_conn *quiche_accept(const uint8_t *scid, size_t scid_len,
@@ -328,7 +328,7 @@ bool quiche_conn_set_qlog_path(quiche_conn *conn, const char *path,
 // Configures the given session for resumption.
 int quiche_conn_set_session(quiche_conn *conn, const uint8_t *buf, size_t buf_len);
 
-typedef struct {
+typedef struct RecieveInfo {
     // The remote address the packet was received from.
     struct sockaddr *from;
     socklen_t from_len;
@@ -342,7 +342,7 @@ typedef struct {
 ssize_t quiche_conn_recv(quiche_conn *conn, uint8_t *buf, size_t buf_len,
                          const quiche_recv_info *info);
 
-typedef struct {
+typedef struct SendInfo {
     // The local address the packet should be sent from.
     struct sockaddr_storage from;
     socklen_t from_len;
@@ -425,7 +425,7 @@ int64_t quiche_conn_stream_writable_next(quiche_conn *conn);
 // Returns true if all the data has been read from the specified stream.
 bool quiche_conn_stream_finished(const quiche_conn *conn, uint64_t stream_id);
 
-typedef struct quiche_stream_iter quiche_stream_iter;
+typedef struct StreamIterator quiche_stream_iter;
 
 // Returns an iterator over streams that have outstanding data to read.
 quiche_stream_iter *quiche_conn_readable(const quiche_conn *conn);
@@ -455,7 +455,7 @@ void quiche_conn_trace_id(const quiche_conn *conn, const uint8_t **out, size_t *
 // Returns the source connection ID.
 void quiche_conn_source_id(const quiche_conn *conn, const uint8_t **out, size_t *out_len);
 
-typedef struct quiche_connection_id_iter quiche_connection_id_iter;
+typedef struct ConnectionIdIterator quiche_connection_id_iter;
 
 // Returns all active source connection IDs.
 quiche_connection_id_iter *quiche_conn_source_ids(quiche_conn *conn);
@@ -533,7 +533,7 @@ bool quiche_stream_iter_next(quiche_stream_iter *iter, uint64_t *stream_id);
 // Frees the given stream iterator object.
 void quiche_stream_iter_free(quiche_stream_iter *iter);
 
-typedef struct {
+typedef struct Stats {
     // The number of QUIC packets received on this connection.
     size_t recv;
 
@@ -580,7 +580,7 @@ typedef struct {
 // Collects and returns statistics about the connection.
 void quiche_conn_stats(const quiche_conn *conn, quiche_stats *out);
 
-typedef struct {
+typedef struct TransportParams {
     // The maximum idle timeout.
     uint64_t peer_max_idle_timeout;
 
@@ -625,7 +625,7 @@ typedef struct {
 // not yet processed the peer's transport parameters.
 bool quiche_conn_peer_transport_params(const quiche_conn *conn, quiche_transport_params *out);
 
-typedef struct {
+typedef struct PathStats {
     // The local address used by this path.
     struct sockaddr_storage local_addr;
     socklen_t local_addr_len;
@@ -779,7 +779,7 @@ enum quiche_path_event_type {
     QUICHE_PATH_EVENT_PEER_MIGRATED,
 };
 
-typedef struct quiche_path_event quiche_path_event;
+typedef struct PathEvent quiche_path_event;
 
 // Retrieves the next event. Returns NULL if there is no event to process.
 const quiche_path_event *quiche_conn_path_event_next(quiche_conn *conn);
@@ -822,7 +822,7 @@ void quiche_path_event_free(quiche_path_event *ev);
 // host to reach its peer.
 int quiche_conn_retire_dcid(quiche_conn *conn, uint64_t dcid_seq);
 
-typedef struct quiche_socket_addr_iter quiche_socket_addr_iter;
+typedef struct SocketAddrIterator quiche_socket_addr_iter;
 
 // Returns an iterator over destination `SockAddr`s whose association
 // with "from" forms a known QUIC path on which packets can be sent to.
@@ -988,7 +988,7 @@ enum quiche_h3_error {
 };
 
 // Stores configuration shared between multiple connections.
-typedef struct quiche_h3_config quiche_h3_config;
+typedef struct H3Config quiche_h3_config;
 
 // Creates an HTTP/3 config object with default settings values.
 quiche_h3_config *quiche_h3_config_new(void);
@@ -1009,7 +1009,7 @@ void quiche_h3_config_enable_extended_connect(quiche_h3_config *config, bool ena
 void quiche_h3_config_free(quiche_h3_config *config);
 
 // An HTTP/3 connection.
-typedef struct quiche_h3_conn quiche_h3_conn;
+typedef struct H3Connection quiche_h3_conn;
 
 // Creates a new HTTP/3 connection using the provided QUIC connection.
 quiche_h3_conn *quiche_h3_conn_new_with_transport(quiche_conn *quiche_conn,
@@ -1024,7 +1024,7 @@ enum quiche_h3_event_type {
     QUICHE_H3_EVENT_PRIORITY_UPDATE,
 };
 
-typedef struct quiche_h3_event quiche_h3_event;
+typedef struct H3Event quiche_h3_event;
 
 // Processes HTTP/3 data received from the peer.
 int64_t quiche_h3_conn_poll(quiche_h3_conn *conn, quiche_conn *quic_conn,
@@ -1064,7 +1064,7 @@ bool quiche_h3_extended_connect_enabled_by_peer(quiche_h3_conn *conn);
 // Frees the HTTP/3 event object.
 void quiche_h3_event_free(quiche_h3_event *ev);
 
-typedef struct {
+typedef struct H3Header {
     const uint8_t *name;
     size_t name_len;
 
@@ -1073,7 +1073,7 @@ typedef struct {
 } quiche_h3_header;
 
 // Extensible Priorities parameters.
-typedef struct {
+typedef struct H3Priority {
     uint8_t urgency;
     bool incremental;
 } quiche_h3_priority;
@@ -1134,17 +1134,6 @@ int quiche_h3_take_last_priority_update(quiche_h3_conn *conn,
 // Returns whether the peer enabled HTTP/3 DATAGRAM frame support.
 bool quiche_h3_dgram_enabled_by_peer(quiche_h3_conn *conn,
                                      quiche_conn *quic_conn);
-
-typedef struct {
-    // The number of bytes received on the QPACK encoder stream.
-    uint64_t qpack_encoder_stream_recv_bytes;
-
-    // The number of bytes received on the QPACK decoder stream.
-    uint64_t qpack_decoder_stream_recv_bytes;
-} quiche_h3_stats;
-
-// Collects and returns statistics about the connection.
-void quiche_h3_conn_stats(const quiche_h3_conn *conn, quiche_h3_stats *out);
 
 // Frees the HTTP/3 connection object.
 void quiche_h3_conn_free(quiche_h3_conn *conn);
