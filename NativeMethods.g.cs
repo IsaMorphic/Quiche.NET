@@ -140,10 +140,10 @@ namespace Quiche
         internal static extern int quiche_header_info(byte* buf, nuint buf_len, nuint dcil, uint* version, byte* type_, byte* scid, nuint* scid_len, byte* dcid, nuint* dcid_len, byte* token, nuint* token_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_accept", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Connection* quiche_accept(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config);
+        internal static extern Conn* quiche_accept(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config);
 
         [DllImport(__DllName, EntryPoint = "__quiche_connect", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Connection* quiche_connect(byte* server_name, byte* scid, nuint scid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config);
+        internal static extern Conn* quiche_connect(byte* server_name, byte* scid, nuint scid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config);
 
         [DllImport(__DllName, EntryPoint = "__quiche_negotiate_version", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern nint quiche_negotiate_version(byte* scid, nuint scid_len, byte* dcid, nuint dcid_len, byte* @out, nuint out_len);
@@ -156,249 +156,249 @@ namespace Quiche
         internal static extern bool quiche_version_is_supported(uint version);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_new_with_tls", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern Connection* quiche_conn_new_with_tls(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config, void* ssl, [MarshalAs(UnmanagedType.U1)] bool is_server);
+        internal static extern Conn* quiche_conn_new_with_tls(byte* scid, nuint scid_len, byte* odcid, nuint odcid_len, sockaddr* local, int local_len, sockaddr* peer, int peer_len, Config* config, void* ssl, [MarshalAs(UnmanagedType.U1)] bool is_server);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_set_keylog_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_set_keylog_path(Connection* conn, byte* path);
+        internal static extern bool quiche_conn_set_keylog_path(Conn* conn, byte* path);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_set_qlog_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_set_qlog_path(Connection* conn, byte* path, byte* log_title, byte* log_desc);
+        internal static extern bool quiche_conn_set_qlog_path(Conn* conn, byte* path, byte* log_title, byte* log_desc);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_set_session", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_set_session(Connection* conn, byte* buf, nuint buf_len);
+        internal static extern int quiche_conn_set_session(Conn* conn, byte* buf, nuint buf_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_recv", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_recv(Connection* conn, byte* buf, nuint buf_len, RecieveInfo* info);
+        internal static extern nint quiche_conn_recv(Conn* conn, byte* buf, nuint buf_len, RecvInfo* info);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_send(Connection* conn, byte* @out, nuint out_len, SendInfo* out_info);
+        internal static extern nint quiche_conn_send(Conn* conn, byte* @out, nuint out_len, SendInfo* out_info);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_quantum", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_send_quantum(Connection* conn);
+        internal static extern nuint quiche_conn_send_quantum(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_on_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_send_on_path(Connection* conn, byte* @out, nuint out_len, sockaddr* from, int from_len, sockaddr* to, int to_len, SendInfo* out_info);
+        internal static extern nint quiche_conn_send_on_path(Conn* conn, byte* @out, nuint out_len, sockaddr* from, int from_len, sockaddr* to, int to_len, SendInfo* out_info);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_quantum_on_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_send_quantum_on_path(Connection* conn, sockaddr* local_addr, int local_len, sockaddr* peer_addr, int peer_len);
+        internal static extern nuint quiche_conn_send_quantum_on_path(Conn* conn, sockaddr* local_addr, int local_len, sockaddr* peer_addr, int peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_recv", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_stream_recv(Connection* conn, ulong stream_id, byte* @out, nuint buf_len, bool* fin, ulong* out_error_code);
+        internal static extern nint quiche_conn_stream_recv(Conn* conn, ulong stream_id, byte* @out, nuint buf_len, bool* fin, ulong* out_error_code);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_send", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_stream_send(Connection* conn, ulong stream_id, byte* buf, nuint buf_len, [MarshalAs(UnmanagedType.U1)] bool fin, ulong* out_error_code);
+        internal static extern nint quiche_conn_stream_send(Conn* conn, ulong stream_id, byte* buf, nuint buf_len, [MarshalAs(UnmanagedType.U1)] bool fin, ulong* out_error_code);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_priority", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_stream_priority(Connection* conn, ulong stream_id, byte urgency, [MarshalAs(UnmanagedType.U1)] bool incremental);
+        internal static extern int quiche_conn_stream_priority(Conn* conn, ulong stream_id, byte urgency, [MarshalAs(UnmanagedType.U1)] bool incremental);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_shutdown", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_stream_shutdown(Connection* conn, ulong stream_id, int direction, ulong err);
+        internal static extern int quiche_conn_stream_shutdown(Conn* conn, ulong stream_id, int direction, ulong err);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_capacity", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_stream_capacity(Connection* conn, ulong stream_id);
+        internal static extern nint quiche_conn_stream_capacity(Conn* conn, ulong stream_id);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_readable", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_stream_readable(Connection* conn, ulong stream_id);
+        internal static extern bool quiche_conn_stream_readable(Conn* conn, ulong stream_id);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_readable_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern long quiche_conn_stream_readable_next(Connection* conn);
+        internal static extern long quiche_conn_stream_readable_next(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_writable", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_stream_writable(Connection* conn, ulong stream_id, nuint len);
+        internal static extern int quiche_conn_stream_writable(Conn* conn, ulong stream_id, nuint len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_writable_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern long quiche_conn_stream_writable_next(Connection* conn);
+        internal static extern long quiche_conn_stream_writable_next(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stream_finished", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_stream_finished(Connection* conn, ulong stream_id);
+        internal static extern bool quiche_conn_stream_finished(Conn* conn, ulong stream_id);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_readable", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern StreamIterator* quiche_conn_readable(Connection* conn);
+        internal static extern StreamIter* quiche_conn_readable(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_writable", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern StreamIterator* quiche_conn_writable(Connection* conn);
+        internal static extern StreamIter* quiche_conn_writable(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_max_send_udp_payload_size", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_max_send_udp_payload_size(Connection* conn);
+        internal static extern nuint quiche_conn_max_send_udp_payload_size(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_timeout_as_nanos", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong quiche_conn_timeout_as_nanos(Connection* conn);
+        internal static extern ulong quiche_conn_timeout_as_nanos(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_timeout_as_millis", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong quiche_conn_timeout_as_millis(Connection* conn);
+        internal static extern ulong quiche_conn_timeout_as_millis(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_on_timeout", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_on_timeout(Connection* conn);
+        internal static extern void quiche_conn_on_timeout(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_close", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_close(Connection* conn, [MarshalAs(UnmanagedType.U1)] bool app, ulong err, byte* reason, nuint reason_len);
+        internal static extern int quiche_conn_close(Conn* conn, [MarshalAs(UnmanagedType.U1)] bool app, ulong err, byte* reason, nuint reason_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_trace_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_trace_id(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern void quiche_conn_trace_id(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_source_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_source_id(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern void quiche_conn_source_id(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_source_ids", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ConnectionIdIterator* quiche_conn_source_ids(Connection* conn);
+        internal static extern ConnIdIter* quiche_conn_source_ids(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_connection_id_iter_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_connection_id_iter_next(ConnectionIdIterator* iter, byte** @out, nuint* out_len);
+        internal static extern bool quiche_connection_id_iter_next(ConnIdIter* iter, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_connection_id_iter_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_connection_id_iter_free(ConnectionIdIterator* iter);
+        internal static extern void quiche_connection_id_iter_free(ConnIdIter* iter);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_destination_id", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_destination_id(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern void quiche_conn_destination_id(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_application_proto", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_application_proto(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern void quiche_conn_application_proto(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_peer_cert", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_peer_cert(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern void quiche_conn_peer_cert(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_session", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_session(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern void quiche_conn_session(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_established", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_established(Connection* conn);
+        internal static extern bool quiche_conn_is_established(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_resumed", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_resumed(Connection* conn);
+        internal static extern bool quiche_conn_is_resumed(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_in_early_data", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_in_early_data(Connection* conn);
+        internal static extern bool quiche_conn_is_in_early_data(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_readable", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_readable(Connection* conn);
+        internal static extern bool quiche_conn_is_readable(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_draining", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_draining(Connection* conn);
+        internal static extern bool quiche_conn_is_draining(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_peer_streams_left_bidi", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong quiche_conn_peer_streams_left_bidi(Connection* conn);
+        internal static extern ulong quiche_conn_peer_streams_left_bidi(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_peer_streams_left_uni", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern ulong quiche_conn_peer_streams_left_uni(Connection* conn);
+        internal static extern ulong quiche_conn_peer_streams_left_uni(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_closed", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_closed(Connection* conn);
+        internal static extern bool quiche_conn_is_closed(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_timed_out", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_timed_out(Connection* conn);
+        internal static extern bool quiche_conn_is_timed_out(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_peer_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_peer_error(Connection* conn, bool* is_app, ulong* error_code, byte** reason, nuint* reason_len);
+        internal static extern bool quiche_conn_peer_error(Conn* conn, bool* is_app, ulong* error_code, byte** reason, nuint* reason_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_local_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_local_error(Connection* conn, bool* is_app, ulong* error_code, byte** reason, nuint* reason_len);
+        internal static extern bool quiche_conn_local_error(Conn* conn, bool* is_app, ulong* error_code, byte** reason, nuint* reason_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_stream_iter_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_stream_iter_next(StreamIterator* iter, ulong* stream_id);
+        internal static extern bool quiche_stream_iter_next(StreamIter* iter, ulong* stream_id);
 
         [DllImport(__DllName, EntryPoint = "__quiche_stream_iter_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_stream_iter_free(StreamIterator* iter);
+        internal static extern void quiche_stream_iter_free(StreamIter* iter);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_stats", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_stats(Connection* conn, Stats* @out);
+        internal static extern void quiche_conn_stats(Conn* conn, Stats* @out);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_peer_transport_params", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_peer_transport_params(Connection* conn, TransportParams* @out);
+        internal static extern bool quiche_conn_peer_transport_params(Conn* conn, TransportParams* @out);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_path_stats", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_path_stats(Connection* conn, nuint idx, PathStats* @out);
+        internal static extern int quiche_conn_path_stats(Conn* conn, nuint idx, PathStats* @out);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_server", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_server(Connection* conn);
+        internal static extern bool quiche_conn_is_server(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_max_writable_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_max_writable_len(Connection* conn);
+        internal static extern nint quiche_conn_dgram_max_writable_len(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_recv_front_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_recv_front_len(Connection* conn);
+        internal static extern nint quiche_conn_dgram_recv_front_len(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_recv_queue_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_recv_queue_len(Connection* conn);
+        internal static extern nint quiche_conn_dgram_recv_queue_len(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_recv_queue_byte_size", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_recv_queue_byte_size(Connection* conn);
+        internal static extern nint quiche_conn_dgram_recv_queue_byte_size(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_send_queue_len", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_send_queue_len(Connection* conn);
+        internal static extern nint quiche_conn_dgram_send_queue_len(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_send_queue_byte_size", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_send_queue_byte_size(Connection* conn);
+        internal static extern nint quiche_conn_dgram_send_queue_byte_size(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_recv", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_recv(Connection* conn, byte* buf, nuint buf_len);
+        internal static extern nint quiche_conn_dgram_recv(Conn* conn, byte* buf, nuint buf_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_send", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_dgram_send(Connection* conn, byte* buf, nuint buf_len);
+        internal static extern nint quiche_conn_dgram_send(Conn* conn, byte* buf, nuint buf_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_dgram_purge_outgoing", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_dgram_purge_outgoing(Connection* conn, delegate* unmanaged[Cdecl]<byte*, nuint, bool> f);
+        internal static extern void quiche_conn_dgram_purge_outgoing(Conn* conn, delegate* unmanaged[Cdecl]<byte*, nuint, bool> f);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_dgram_send_queue_full", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_dgram_send_queue_full(Connection* conn);
+        internal static extern bool quiche_conn_is_dgram_send_queue_full(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_dgram_recv_queue_full", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_is_dgram_recv_queue_full(Connection* conn);
+        internal static extern bool quiche_conn_is_dgram_recv_queue_full(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_ack_eliciting", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_send_ack_eliciting(Connection* conn);
+        internal static extern nint quiche_conn_send_ack_eliciting(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_send_ack_eliciting_on_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_conn_send_ack_eliciting_on_path(Connection* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len);
+        internal static extern nint quiche_conn_send_ack_eliciting_on_path(Conn* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_retired_scid_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_retired_scid_next(Connection* conn, byte** @out, nuint* out_len);
+        internal static extern bool quiche_conn_retired_scid_next(Conn* conn, byte** @out, nuint* out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_retired_scids", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_retired_scids(Connection* conn);
+        internal static extern nuint quiche_conn_retired_scids(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_available_dcids", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_available_dcids(Connection* conn);
+        internal static extern nuint quiche_conn_available_dcids(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_scids_left", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_scids_left(Connection* conn);
+        internal static extern nuint quiche_conn_scids_left(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_active_scids", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nuint quiche_conn_active_scids(Connection* conn);
+        internal static extern nuint quiche_conn_active_scids(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_new_scid", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_new_scid(Connection* conn, byte* scid, nuint scid_len, byte* reset_token, [MarshalAs(UnmanagedType.U1)] bool retire_if_needed, ulong* scid_seq);
+        internal static extern int quiche_conn_new_scid(Conn* conn, byte* scid, nuint scid_len, byte* reset_token, [MarshalAs(UnmanagedType.U1)] bool retire_if_needed, ulong* scid_seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_probe_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_probe_path(Connection* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len, ulong* seq);
+        internal static extern int quiche_conn_probe_path(Conn* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len, ulong* seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_migrate_source", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_migrate_source(Connection* conn, sockaddr* local, int local_len, ulong* seq);
+        internal static extern int quiche_conn_migrate_source(Conn* conn, sockaddr* local, int local_len, ulong* seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_migrate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_migrate(Connection* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len, ulong* seq);
+        internal static extern int quiche_conn_migrate(Conn* conn, sockaddr* local, int local_len, sockaddr* peer, int peer_len, ulong* seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_path_event_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern PathEvent* quiche_conn_path_event_next(Connection* conn);
+        internal static extern PathEvent* quiche_conn_path_event_next(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_path_event_type", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int quiche_path_event_type(PathEvent* ev);
@@ -425,23 +425,23 @@ namespace Quiche
         internal static extern void quiche_path_event_free(PathEvent* ev);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_retire_dcid", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_retire_dcid(Connection* conn, ulong dcid_seq);
+        internal static extern int quiche_conn_retire_dcid(Conn* conn, ulong dcid_seq);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_paths_iter", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern SocketAddrIterator* quiche_conn_paths_iter(Connection* conn, sockaddr* from, nuint from_len);
+        internal static extern SocketAddrIter* quiche_conn_paths_iter(Conn* conn, sockaddr* from, nuint from_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_socket_addr_iter_next", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_socket_addr_iter_next(SocketAddrIterator* iter, sockaddr_storage* peer, nuint* peer_len);
+        internal static extern bool quiche_socket_addr_iter_next(SocketAddrIter* iter, sockaddr_storage* peer, nuint* peer_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_socket_addr_iter_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_socket_addr_iter_free(SocketAddrIterator* iter);
+        internal static extern void quiche_socket_addr_iter_free(SocketAddrIter* iter);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_is_path_validated", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_conn_is_path_validated(Connection* conn, sockaddr* from, nuint from_len, sockaddr* to, nuint to_len);
+        internal static extern int quiche_conn_is_path_validated(Conn* conn, sockaddr* from, nuint from_len, sockaddr* to, nuint to_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_conn_free(Connection* conn);
+        internal static extern void quiche_conn_free(Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_put_varint", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int quiche_put_varint(byte* buf, nuint buf_len, ulong val);
@@ -468,10 +468,10 @@ namespace Quiche
         internal static extern void quiche_h3_config_free(H3Config* config);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_conn_new_with_transport", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern H3Connection* quiche_h3_conn_new_with_transport(Connection* quiche_conn, H3Config* config);
+        internal static extern H3Conn* quiche_h3_conn_new_with_transport(Conn* quiche_conn, H3Config* config);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_conn_poll", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern long quiche_h3_conn_poll(H3Connection* conn, Connection* quic_conn, H3Event** ev);
+        internal static extern long quiche_h3_conn_poll(H3Conn* conn, Conn* quic_conn, H3Event** ev);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_event_type", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int quiche_h3_event_type(H3Event* ev);
@@ -480,7 +480,7 @@ namespace Quiche
         internal static extern int quiche_h3_event_for_each_header(H3Event* ev, delegate* unmanaged[Cdecl]<byte*, nuint, byte*, nuint, void*, int> cb, void* argp);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_for_each_setting", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_for_each_setting(H3Connection* conn, delegate* unmanaged[Cdecl]<ulong, ulong, void*, int> cb, void* argp);
+        internal static extern int quiche_h3_for_each_setting(H3Conn* conn, delegate* unmanaged[Cdecl]<ulong, ulong, void*, int> cb, void* argp);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_event_headers_has_body", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -488,28 +488,28 @@ namespace Quiche
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_extended_connect_enabled_by_peer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_h3_extended_connect_enabled_by_peer(H3Connection* conn);
+        internal static extern bool quiche_h3_extended_connect_enabled_by_peer(H3Conn* conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_event_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern void quiche_h3_event_free(H3Event* ev);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_request", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern long quiche_h3_send_request(H3Connection* conn, Connection* quic_conn, H3Header* headers, nuint headers_len, [MarshalAs(UnmanagedType.U1)] bool fin);
+        internal static extern long quiche_h3_send_request(H3Conn* conn, Conn* quic_conn, H3Header* headers, nuint headers_len, [MarshalAs(UnmanagedType.U1)] bool fin);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_response", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_send_response(H3Connection* conn, Connection* quic_conn, ulong stream_id, H3Header* headers, nuint headers_len, [MarshalAs(UnmanagedType.U1)] bool fin);
+        internal static extern int quiche_h3_send_response(H3Conn* conn, Conn* quic_conn, ulong stream_id, H3Header* headers, nuint headers_len, [MarshalAs(UnmanagedType.U1)] bool fin);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_response_with_priority", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_send_response_with_priority(H3Connection* conn, Connection* quic_conn, ulong stream_id, H3Header* headers, nuint headers_len, H3Priority* priority, [MarshalAs(UnmanagedType.U1)] bool fin);
+        internal static extern int quiche_h3_send_response_with_priority(H3Conn* conn, Conn* quic_conn, ulong stream_id, H3Header* headers, nuint headers_len, H3Priority* priority, [MarshalAs(UnmanagedType.U1)] bool fin);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_body", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_h3_send_body(H3Connection* conn, Connection* quic_conn, ulong stream_id, byte* body, nuint body_len, [MarshalAs(UnmanagedType.U1)] bool fin);
+        internal static extern nint quiche_h3_send_body(H3Conn* conn, Conn* quic_conn, ulong stream_id, byte* body, nuint body_len, [MarshalAs(UnmanagedType.U1)] bool fin);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_recv_body", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern nint quiche_h3_recv_body(H3Connection* conn, Connection* quic_conn, ulong stream_id, byte* @out, nuint out_len);
+        internal static extern nint quiche_h3_recv_body(H3Conn* conn, Conn* quic_conn, ulong stream_id, byte* @out, nuint out_len);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_goaway", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_send_goaway(H3Connection* conn, Connection* quic_conn, ulong id);
+        internal static extern int quiche_h3_send_goaway(H3Conn* conn, Conn* quic_conn, ulong id);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_parse_extensible_priority", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int quiche_h3_parse_extensible_priority(byte* priority, nuint priority_len, H3Priority* parsed);
@@ -519,17 +519,17 @@ namespace Quiche
         ///  request stream ID and priority.
         /// </summary>
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_priority_update_for_request", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_send_priority_update_for_request(H3Connection* conn, Connection* quic_conn, ulong stream_id, H3Priority* priority);
+        internal static extern int quiche_h3_send_priority_update_for_request(H3Conn* conn, Conn* quic_conn, ulong stream_id, H3Priority* priority);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_take_last_priority_update", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_take_last_priority_update(H3Connection* conn, ulong prioritized_element_id, delegate* unmanaged[Cdecl]<byte*, ulong, void*, int> cb, void* argp);
+        internal static extern int quiche_h3_take_last_priority_update(H3Conn* conn, ulong prioritized_element_id, delegate* unmanaged[Cdecl]<byte*, ulong, void*, int> cb, void* argp);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_dgram_enabled_by_peer", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_h3_dgram_enabled_by_peer(H3Connection* conn, Connection* quic_conn);
+        internal static extern bool quiche_h3_dgram_enabled_by_peer(H3Conn* conn, Conn* quic_conn);
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_conn_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern void quiche_h3_conn_free(H3Connection* conn);
+        internal static extern void quiche_h3_conn_free(H3Conn* conn);
 
 
     }
@@ -561,13 +561,13 @@ namespace Quiche
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct Connection
+    internal unsafe partial struct Conn
     {
         public fixed byte _unused[1];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct RecieveInfo
+    internal unsafe partial struct RecvInfo
     {
         public sockaddr* from;
         public int from_len;
@@ -586,13 +586,13 @@ namespace Quiche
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct StreamIterator
+    internal unsafe partial struct StreamIter
     {
         public fixed byte _unused[1];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct ConnectionIdIterator
+    internal unsafe partial struct ConnIdIter
     {
         public fixed byte _unused[1];
     }
@@ -664,7 +664,7 @@ namespace Quiche
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct SocketAddrIterator
+    internal unsafe partial struct SocketAddrIter
     {
         public fixed byte _unused[1];
     }
@@ -676,7 +676,7 @@ namespace Quiche
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe partial struct H3Connection
+    internal unsafe partial struct H3Conn
     {
         public fixed byte _unused[1];
     }
