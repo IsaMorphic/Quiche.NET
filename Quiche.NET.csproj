@@ -18,10 +18,13 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="csbindgen" Version="1.9.3">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
+		<PackageReference Include="csbindgen" Version="1.9.3">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+		<Exec WorkingDirectory="quiche-bindgen" Command="cargo build --release" />
+	</Target>
 </Project>

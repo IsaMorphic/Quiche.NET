@@ -327,10 +327,6 @@ quiche_conn *quiche_conn_new_with_tls(const uint8_t *scid, size_t scid_len,
 // Enables keylog to the specified file path. Returns true on success.
 bool quiche_conn_set_keylog_path(quiche_conn *conn, const char *path);
 
-// Enables qlog to the specified file path. Returns true on success.
-bool quiche_conn_set_qlog_path(quiche_conn *conn, const char *path,
-                          const char *log_title, const char *log_desc);
-
 // Configures the given session for resumption.
 int quiche_conn_set_session(quiche_conn *conn, const uint8_t *buf, size_t buf_len);
 
@@ -1112,11 +1108,6 @@ ssize_t quiche_h3_recv_body(quiche_h3_conn *conn, quiche_conn *quic_conn,
 // Sends a GOAWAY frame to initiate graceful connection closure.
 int quiche_h3_send_goaway(quiche_h3_conn *conn, quiche_conn *quic_conn,
                           uint64_t id);
-
-// Try to parse an Extensible Priority field value.
-int quiche_h3_parse_extensible_priority(uint8_t *priority,
-                                        size_t priority_len,
-                                        quiche_h3_priority *parsed);
 
 /// Sends a PRIORITY_UPDATE frame on the control stream with specified
 /// request stream ID and priority.

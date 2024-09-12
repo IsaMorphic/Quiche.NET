@@ -12,7 +12,7 @@ namespace Quiche
 {
     internal static unsafe partial class NativeMethods
     {
-        const string __DllName = "quiche";
+        const string __DllName = "quiche-bindgen";
 
 
 
@@ -161,10 +161,6 @@ namespace Quiche
         [DllImport(__DllName, EntryPoint = "__quiche_conn_set_keylog_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.U1)]
         internal static extern bool quiche_conn_set_keylog_path(Conn* conn, byte* path);
-
-        [DllImport(__DllName, EntryPoint = "__quiche_conn_set_qlog_path", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        [return: MarshalAs(UnmanagedType.U1)]
-        internal static extern bool quiche_conn_set_qlog_path(Conn* conn, byte* path, byte* log_title, byte* log_desc);
 
         [DllImport(__DllName, EntryPoint = "__quiche_conn_set_session", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int quiche_conn_set_session(Conn* conn, byte* buf, nuint buf_len);
@@ -510,9 +506,6 @@ namespace Quiche
 
         [DllImport(__DllName, EntryPoint = "__quiche_h3_send_goaway", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         internal static extern int quiche_h3_send_goaway(H3Conn* conn, Conn* quic_conn, ulong id);
-
-        [DllImport(__DllName, EntryPoint = "__quiche_h3_parse_extensible_priority", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-        internal static extern int quiche_h3_parse_extensible_priority(byte* priority, nuint priority_len, H3Priority* parsed);
 
         /// <summary>
         ///  Sends a PRIORITY_UPDATE frame on the control stream with specified
