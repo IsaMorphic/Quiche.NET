@@ -385,3 +385,4 @@ Cargo.lock
 #.idea/
 
 quiche*.rs
+/NativeMethods.g.cs
