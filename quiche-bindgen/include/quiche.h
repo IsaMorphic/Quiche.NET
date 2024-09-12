@@ -286,7 +286,7 @@ int quiche_header_info(const uint8_t *buf, size_t buf_len, size_t dcil,
                        uint8_t *token, size_t *token_len);
 
 // A QUIC connection.
-typedef struct Connection quiche_conn;
+typedef struct Conn quiche_conn;
 
 // Creates a new server-side connection.
 quiche_conn *quiche_accept(const uint8_t *scid, size_t scid_len,
@@ -334,7 +334,7 @@ bool quiche_conn_set_qlog_path(quiche_conn *conn, const char *path,
 // Configures the given session for resumption.
 int quiche_conn_set_session(quiche_conn *conn, const uint8_t *buf, size_t buf_len);
 
-typedef struct RecieveInfo {
+typedef struct RecvInfo {
     // The remote address the packet was received from.
     struct sockaddr *from;
     socklen_t from_len;
@@ -431,7 +431,7 @@ int64_t quiche_conn_stream_writable_next(quiche_conn *conn);
 // Returns true if all the data has been read from the specified stream.
 bool quiche_conn_stream_finished(const quiche_conn *conn, uint64_t stream_id);
 
-typedef struct StreamIterator quiche_stream_iter;
+typedef struct StreamIter quiche_stream_iter;
 
 // Returns an iterator over streams that have outstanding data to read.
 quiche_stream_iter *quiche_conn_readable(const quiche_conn *conn);
@@ -461,7 +461,7 @@ void quiche_conn_trace_id(const quiche_conn *conn, const uint8_t **out, size_t *
 // Returns the source connection ID.
 void quiche_conn_source_id(const quiche_conn *conn, const uint8_t **out, size_t *out_len);
 
-typedef struct ConnectionIdIterator quiche_connection_id_iter;
+typedef struct ConnIdIter quiche_connection_id_iter;
 
 // Returns all active source connection IDs.
 quiche_connection_id_iter *quiche_conn_source_ids(quiche_conn *conn);
@@ -828,7 +828,7 @@ void quiche_path_event_free(quiche_path_event *ev);
 // host to reach its peer.
 int quiche_conn_retire_dcid(quiche_conn *conn, uint64_t dcid_seq);
 
-typedef struct SocketAddrIterator quiche_socket_addr_iter;
+typedef struct SocketAddrIter quiche_socket_addr_iter;
 
 // Returns an iterator over destination `SockAddr`s whose association
 // with "from" forms a known QUIC path on which packets can be sent to.
@@ -1015,7 +1015,7 @@ void quiche_h3_config_enable_extended_connect(quiche_h3_config *config, bool ena
 void quiche_h3_config_free(quiche_h3_config *config);
 
 // An HTTP/3 connection.
-typedef struct H3Connection quiche_h3_conn;
+typedef struct H3Conn quiche_h3_conn;
 
 // Creates a new HTTP/3 connection using the provided QUIC connection.
 quiche_h3_conn *quiche_h3_conn_new_with_transport(quiche_conn *quiche_conn,
