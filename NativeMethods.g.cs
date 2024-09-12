@@ -12,7 +12,7 @@ namespace Quiche
 {
     internal static unsafe partial class NativeMethods
     {
-        const string __DllName = "quiche-bindgen";
+        const string __DllName = "quiche_bindgen";
 
 
 

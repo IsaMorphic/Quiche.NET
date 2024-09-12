@@ -34,7 +34,7 @@ fn main() {
     .rust_file_header("use super::quiche::*;")     // import bindgen generated modules(struct/method)
     .rust_method_prefix("__")
     .csharp_entry_point_prefix("__")
-    .csharp_dll_name("quiche-bindgen")
+    .csharp_dll_name("quiche_bindgen")
     .csharp_namespace("Quiche")
     .generate_to_file("src/quiche_ffi.rs", "../NativeMethods.g.cs")
     .unwrap();
