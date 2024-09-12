@@ -35,30 +35,30 @@
 extern "C" {
 #endif
 
-    // sys/sockets.h
+// sys/sockets.h
 
-    typedef int socklen_t;
-    typedef int sa_family_t;
+typedef int socklen_t;
+typedef int sa_family_t;
 
-    struct sockaddr {
-        sa_family_t ss_family;
-    };
+struct sockaddr {
+    sa_family_t ss_family;
+};
 
-    struct sockaddr_storage {
-        sa_family_t ss_family;
-        uint8_t data[64];
-    };
+struct sockaddr_storage {
+    sa_family_t ss_family;
+    uint8_t data[64];
+};
 
-    // sys/time.h
+// sys/time.h
 
-    struct timespec {
-        time_t tv_sec;
-        int64_t tv_nsec;
-    };
+struct timespec {
+    time_t tv_sec;
+    int64_t tv_nsec;
+};
 
-    // sys/types.h
+// sys/types.h
 
-    typedef size_t ssize_t;
+typedef size_t ssize_t;
 
 // QUIC transport API.
 //
