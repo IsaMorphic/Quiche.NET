@@ -7,10 +7,7 @@ fn main() {
 
     // Windows only
     #[cfg(target_os = "windows")] 
-    {
-        println!("cargo:rustc-link-lib=crypt32");
-        println!("cargo:rustc-link-lib=bcrypt");
-    }
+    println!("cargo:rustc-link-lib=crypt32");
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
