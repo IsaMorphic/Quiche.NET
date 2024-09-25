@@ -1,6 +1,6 @@
-﻿using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Text;
 using static Quiche.NativeMethods;
+using static Quiche.NET.QuicheLibrary;
 
 namespace Quiche.NET
 {
@@ -8,142 +8,131 @@ namespace Quiche.NET
     {
         // quiche_config handle
 
-        private Config* nativePtr;
+        internal Config* NativePtr { get; private set; }
 
         // quiche_config properties
 
-        private bool isActiveMigrationEnabled;
-
-        private readonly bool isEarlyDataEnabled;
-
-        private bool isHyStartEnabled;
-
-        private bool isPacingEnabled;
-
-        private bool shouldDiscoverPathMtu;
-
-        private readonly bool shouldLogKeys;
-
-        private bool shouldSendGrease;
-
-        private bool shouldVerifyPeer;
-
-        public bool IsActiveMigrationEnabled
+        public bool IsActiveMigrationDisabled
         {
-            get
-            {
-                return isActiveMigrationEnabled;
-            }
             set
             {
-                nativePtr->SetDisableActiveMigration(isActiveMigrationEnabled = !value);
-            }
-        }
-
-        public bool IsEarlyDataEnabled
-        {
-            get
-            {
-                return isEarlyDataEnabled;
+                NativePtr->SetDisableActiveMigration(value);
             }
         }
 
         public bool IsHyStartEnabled
         {
-            get
-            {
-                return isHyStartEnabled;
-            }
             set
             {
-                nativePtr->EnableHystart(isHyStartEnabled = value);
+                NativePtr->EnableHystart(value);
             }
         }
 
         public bool IsPacingEnabled
         {
-            get
-            {
-                return isPacingEnabled;
-            }
             set
             {
-                nativePtr->EnablePacing(isPacingEnabled = value);
+                NativePtr->EnablePacing(value);
             }
         }
 
         public bool ShouldDiscoverPathMtu
         {
-            get
-            {
-                return shouldDiscoverPathMtu;
-            }
             set
             {
-                nativePtr->DiscoverPmtu(shouldDiscoverPathMtu = value);
-            }
-        }
-
-        public bool ShouldLogKeys
-        {
-            get
-            {
-                return shouldLogKeys;
+                NativePtr->DiscoverPmtu(value);
             }
         }
 
         public bool ShouldSendGrease
         {
-            get
-            {
-                return shouldSendGrease;
-            }
             set
             {
-                nativePtr->VerifyPeer(shouldSendGrease = value);
+                NativePtr->VerifyPeer(value);
             }
         }
 
         public bool ShouldVerifyPeer
         {
-            get
-            {
-                return shouldVerifyPeer;
-            }
             set
             {
-                nativePtr->VerifyPeer(shouldVerifyPeer = value);
+                NativePtr->VerifyPeer(value);
             }
         }
 
         public QuicheConfig(
-            bool isEarlyDataEnabled,
-            bool shouldLogKeys
+            bool isEarlyDataEnabled = false,
+            bool shouldLogKeys = false
             )
         {
-            nativePtr = quiche_config_new(QuicheLibrary.PROTOCOL_VERSION);
-
-            if (shouldLogKeys)
-            {
-                nativePtr->LogKeys();
-                this.shouldLogKeys = true;
-            }
+            NativePtr = quiche_config_new(PROTOCOL_VERSION);
 
             if (isEarlyDataEnabled)
             {
-                nativePtr->EnableEarlyData();
-                this.isEarlyDataEnabled = true;
+                NativePtr->EnableEarlyData();
+            }
+
+            if (shouldLogKeys)
+            {
+                NativePtr->LogKeys();
             }
         }
 
         public void LoadCertificateChainFromPemFile(string filePath)
         {
-            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath)) 
+            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
             {
                 QuicheException.ThrowIfError(
-                    (QuicheError)nativePtr->LoadCertChainFromPemFile(filePathPtr),
+                    (QuicheError)NativePtr->LoadCertChainFromPemFile(filePathPtr),
                     "Failed to load certificate chain from provided PEM file!"
                     );
+            }
+        }
+
+        public void LoadPrivateKeyFromPemFile(string filePath)
+        {
+            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
+            {
+                QuicheException.ThrowIfError(
+                    (QuicheError)NativePtr->LoadPrivKeyFromPemFile(filePathPtr),
+                    "Failed to load private key from provided PEM file!"
+                    );
+            }
+        }
+
+        public void LoadVerifyLocationsFromFile(string filePath)
+        {
+            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
+            {
+                QuicheException.ThrowIfError(
+                    (QuicheError)NativePtr->LoadVerifyLocationsFromFile(filePathPtr),
+                    "Failed to load trusted CA locations from provided file!"
+                    );
+            }
+        }
+
+        public void LoadVerifyLocationsFromDirectory(string path)
+        {
+            fixed (byte* pathPtr = Encoding.Default.GetBytes(path))
+            {
+                QuicheException.ThrowIfError(
+                    (QuicheError)NativePtr->LoadVerifyLocationsFromDirectory(pathPtr),
+                    "Failed to load trusted CA locations from provided directory!"
+                    );
+            }
+        }
+
+        public void SetApplicationProtocols(params string[] protos)
+        {
+            List<byte> protoList = new();
+            foreach (string proto in protos)
+            {
+                protoList.AddRange([..Encoding.Default.GetBytes(proto), 0]);
+            }
+
+            fixed (byte* protosPtr = protoList.ToArray())
+            {
+                NativePtr->SetApplicationProtos(protosPtr, (nuint)protoList.Count);
             }
         }
 
@@ -155,8 +144,8 @@ namespace Quiche.NET
         {
             if (!disposedValue)
             {
-                nativePtr->Free();
-                nativePtr = null;
+                NativePtr->Free();
+                NativePtr = null;
 
                 disposedValue = true;
             }

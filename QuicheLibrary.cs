@@ -1,4 +1,4 @@
-﻿using System.Text;
+﻿using static Quiche.NativeMethods;
 
 namespace Quiche.NET
 {
@@ -14,7 +14,7 @@ namespace Quiche.NET
         { 
             get 
             {
-                sbyte* versionCodePtr = (sbyte*)NativeMethods.quiche_version();
+                sbyte* versionCodePtr = (sbyte*)quiche_version();
                 return new string(versionCodePtr);
             } 
         }
