@@ -7,7 +7,7 @@
         public QuicheError ErrorCode { get; }
 
         private QuicheException(QuicheError errorCode, string? message) 
-            : base($"{message ?? DEFAULT_MESSAGE}\n{errorCode}")
+            : base($"{message ?? DEFAULT_MESSAGE}\nCode: {errorCode}")
         {
             ErrorCode = errorCode;
         }
