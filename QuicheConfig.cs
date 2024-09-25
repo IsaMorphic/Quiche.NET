@@ -36,6 +36,30 @@ namespace Quiche.NET
             }
         }
 
+        public ulong MaxAcknowledgementDelay
+        {
+            set
+            {
+                NativePtr->SetMaxAckDelay(value);
+            }
+        }
+
+        public nuint MaxAmplificationFactor
+        {
+            set 
+            {
+                NativePtr->SetMaxAmplificationFactor(value);
+            }
+        }
+
+        public ulong MaxIdleTimeout
+        {
+            set 
+            {
+                NativePtr->SetMaxIdleTimeout(value);
+            }
+        }
+
         public bool ShouldDiscoverPathMtu
         {
             set
@@ -127,12 +151,15 @@ namespace Quiche.NET
             List<byte> protoList = new();
             foreach (string proto in protos)
             {
-                protoList.AddRange([..Encoding.Default.GetBytes(proto), 0]);
+                protoList.AddRange(Encoding.Default
+                    .GetBytes([..proto.ToCharArray(), '\u0000']));
             }
 
             fixed (byte* protosPtr = protoList.ToArray())
             {
-                NativePtr->SetApplicationProtos(protosPtr, (nuint)protoList.Count);
+                QuicheException.ThrowIfError((QuicheError)NativePtr->
+                    SetApplicationProtos(protosPtr, (nuint)protoList.Count), 
+                    "Failed to set application protocols for this instance.");
             }
         }
 
