@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Buffers;
+using System.Text;
 using static Quiche.NativeMethods;
 using static Quiche.NET.QuicheLibrary;
 
@@ -36,27 +37,75 @@ namespace Quiche.NET
             }
         }
 
-        public ulong MaxAcknowledgementDelay
+        public long MaxAcknowledgementDelay
         {
             set
             {
-                NativePtr->SetMaxAckDelay(value);
+                NativePtr->SetMaxAckDelay((ulong)value);
             }
         }
 
-        public nuint MaxAmplificationFactor
+        public int MaxAmplificationFactor
         {
-            set 
+            set
             {
-                NativePtr->SetMaxAmplificationFactor(value);
+                NativePtr->SetMaxAmplificationFactor((nuint)value);
             }
         }
 
-        public ulong MaxIdleTimeout
+        public long MaxIdleTimeout
         {
-            set 
+            set
             {
-                NativePtr->SetMaxIdleTimeout(value);
+                NativePtr->SetMaxIdleTimeout((ulong)value);
+            }
+        }
+
+        public long MaxInitialDataSize
+        {
+            set
+            {
+                NativePtr->SetInitialMaxData((ulong)value);
+            }
+        }
+
+        public long MaxInitialLocalBidiStreamDataSize
+        {
+            set
+            {
+                NativePtr->SetInitialMaxStreamDataBidiLocal((ulong)value);
+            }
+        }
+
+        public long MaxInitialRemoteBidiStreamDataSize
+        {
+            set
+            {
+                NativePtr->SetInitialMaxStreamDataBidiRemote((ulong)value);
+            }
+        }
+
+        public long MaxInitialUniStreamDataSize
+        {
+            set
+            {
+                NativePtr->SetInitialMaxStreamDataUni((ulong)value);
+            }
+        }
+
+        public int MaxReceiveUdpPayloadSize
+        {
+            set
+            {
+                NativePtr->SetMaxRecvUdpPayloadSize((nuint)value);
+            }
+        }
+
+        public int MaxSendUdpPayloadSize
+        {
+            set
+            {
+                NativePtr->SetMaxSendUdpPayloadSize((nuint)value);
             }
         }
 
@@ -124,17 +173,6 @@ namespace Quiche.NET
             }
         }
 
-        public void LoadVerifyLocationsFromFile(string filePath)
-        {
-            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
-            {
-                QuicheException.ThrowIfError(
-                    (QuicheError)NativePtr->LoadVerifyLocationsFromFile(filePathPtr),
-                    "Failed to load trusted CA locations from provided file!"
-                    );
-            }
-        }
-
         public void LoadVerifyLocationsFromDirectory(string path)
         {
             fixed (byte* pathPtr = Encoding.Default.GetBytes(path))
@@ -146,20 +184,41 @@ namespace Quiche.NET
             }
         }
 
+        public void LoadVerifyLocationsFromFile(string filePath)
+        {
+            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
+            {
+                QuicheException.ThrowIfError(
+                    (QuicheError)NativePtr->LoadVerifyLocationsFromFile(filePathPtr),
+                    "Failed to load trusted CA locations from provided file!"
+                    );
+            }
+        }
+
         public void SetApplicationProtocols(params string[] protos)
         {
             List<byte> protoList = new();
             foreach (string proto in protos)
             {
                 protoList.AddRange(Encoding.Default
-                    .GetBytes([..proto.ToCharArray(), '\u0000']));
+                    .GetBytes([.. proto.ToCharArray(), '\u0000']));
             }
 
             fixed (byte* protosPtr = protoList.ToArray())
             {
                 QuicheException.ThrowIfError((QuicheError)NativePtr->
-                    SetApplicationProtos(protosPtr, (nuint)protoList.Count), 
+                    SetApplicationProtos(protosPtr, (nuint)protoList.Count),
                     "Failed to set application protocols for this instance.");
+            }
+        }
+
+        public void SetTicketKey(byte[] keyBytes)
+        {
+            fixed (byte* keyBytesPtr = keyBytes)
+            {
+                QuicheException.ThrowIfError((QuicheError)NativePtr->
+                    SetTicketKey(keyBytesPtr, (nuint)keyBytes.Length),
+                    "Failed to set ticket key contents for this instance.");
             }
         }
 
