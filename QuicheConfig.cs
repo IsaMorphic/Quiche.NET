@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Text;
+﻿using System.Text;
 using static Quiche.NativeMethods;
 using static Quiche.NET.QuicheLibrary;
 
@@ -12,6 +11,38 @@ namespace Quiche.NET
         internal Config* NativePtr { get; private set; }
 
         // quiche_config properties
+
+        public long AcknowledgementDelayExponent
+        {
+            set
+            {
+                NativePtr->SetAckDelayExponent((ulong)value);
+            }
+        }
+
+        public long ActiveConnectionIdLimit 
+        {
+            set 
+            {
+                NativePtr->SetActiveConnectionIdLimit((ulong)value);
+            }
+        }
+
+        public QuicheCcAlgorithm CcAlgorithm 
+        {
+            set 
+            {
+                NativePtr->SetCcAlgorithm((int)value);
+            }
+        }
+
+        public int InitialCongestionWindowPackets
+        {
+            set 
+            {
+                NativePtr->SetInitialCongestionWindowPackets((nuint)value);
+            }
+        }
 
         public bool IsActiveMigrationDisabled
         {
@@ -61,6 +92,14 @@ namespace Quiche.NET
             }
         }
 
+        public long MaxInitialBidiStreams 
+        {
+            set 
+            {
+                NativePtr->SetInitialMaxStreamsBidi((ulong)value);
+            }
+        }
+
         public long MaxInitialDataSize
         {
             set
@@ -90,6 +129,22 @@ namespace Quiche.NET
             set
             {
                 NativePtr->SetInitialMaxStreamDataUni((ulong)value);
+            }
+        }
+
+        public long MaxInitialUniStreams
+        {
+            set
+            {
+                NativePtr->SetInitialMaxStreamsBidi((ulong)value);
+            }
+        }
+
+        public long MaxPacingRate
+        {
+            set 
+            {
+                NativePtr->SetMaxPacingRate((ulong)value);
             }
         }
 
