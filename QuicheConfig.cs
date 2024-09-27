@@ -32,7 +32,7 @@ namespace Quiche.NET
         {
             set 
             {
-                NativePtr->SetCcAlgorithm((int)value);
+                NativePtr->SetCcAlgorithm((uint)value);
             }
         }
 

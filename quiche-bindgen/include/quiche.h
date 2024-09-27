@@ -31,6 +31,21 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <time.h>
+#else
+#include <sys/time.h>
+#endif
+
+#ifndef _MSC_VER
+#include <sys/types.h>
+#endif
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+#define ssize_t SSIZE_T
+#endif
+
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -48,17 +63,6 @@ struct sockaddr_storage {
     sa_family_t ss_family;
     uint8_t data[64];
 };
-
-// sys/time.h
-
-struct timespec {
-    time_t tv_sec;
-    int64_t tv_nsec;
-};
-
-// sys/types.h
-
-typedef size_t ssize_t;
 
 // QUIC transport API.
 //
