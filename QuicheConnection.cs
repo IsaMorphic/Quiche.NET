@@ -28,57 +28,67 @@ public unsafe class QuicheConnection
     {
         for (; ; )
         {
-            byte[] recvBuff = ArrayPool<byte>.Shared.Rent(512);
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(512);
             EndPoint remoteEndPoint = new IPEndPoint(IPAddress.None, 0);
-            int readCount = dgramSocket.ReceiveFrom(recvBuff, ref remoteEndPoint);
+            int readCount = dgramSocket.ReceiveFrom(buffer, ref remoteEndPoint);
+
+            var (to, to_len) = GetSocketAddress(dgramSocket.LocalEndPoint);
+            var (from, from_len) = GetSocketAddress(remoteEndPoint);
 
             RecvInfo recvInfo = new RecvInfo
             {
-                to = GetSocketAddress(dgramSocket.LocalEndPoint),
-                to_len = sizeof(sockaddr_storage),
+                to = (sockaddr*)to.Pointer,
+                to_len = to_len,
 
-                from = GetSocketAddress(remoteEndPoint),
-                from_len = sizeof(sockaddr_storage),
+                from = (sockaddr*)from.Pointer,
+                from_len = from_len,
             };
 
             long streamId;
-            nint recvCount;
-            fixed (byte* recvBuffPtr = recvBuff)
+            long recvCount;
+            fixed (byte* bufPtr = buffer)
             {
-                recvCount = quiche_conn_recv(nativePtr, recvBuffPtr, 
-                    (nuint)readCount, (RecvInfo*)Unsafe.AsPointer(ref recvInfo));
-                
-                streamId = quiche_conn_stream_readable_next(nativePtr);
-                if(streamId < 0) 
+                using (to)
+                using (from)
                 {
-                    SendInfo sendInfo = default;
-                    nint sendCount = quiche_conn_send(nativePtr, recvBuffPtr, (nuint)recvBuff.Length, 
-                        (SendInfo*)Unsafe.AsPointer(ref sendInfo));
-                    dgramSocket.SendTo(new ReadOnlySpan<byte>(recvBuffPtr, (int)sendCount), new IPEndPoint(
-                        new IPAddress(new ReadOnlySpan<byte>(sendInfo.to.data, sendInfo.to_len)), 0));
-                    continue;
+                    recvCount = (long)quiche_conn_recv(nativePtr, bufPtr,
+                        (nuint)readCount, (RecvInfo*)Unsafe.AsPointer(ref recvInfo));
                 }
 
-                bool streamFinished = false;
-                QuicheError errorCode = QuicheError.QUICHE_ERR_NONE;
-                recvCount = quiche_conn_stream_recv(nativePtr, (ulong)streamId, recvBuffPtr, (nuint)recvCount, 
-                    (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
-                QuicheException.ThrowIfError(errorCode, "An unexpected error occured in quiche!");
+                bool flag;
+                streamId = quiche_conn_stream_readable_next(nativePtr);
+                if ((flag = streamId < 0) && (streamId = quiche_conn_stream_writable_next(nativePtr)) < 0)
+                {
+                    SendInfo sendInfo = default;
+                    long sendCount = (long)quiche_conn_send(nativePtr, bufPtr, (nuint)buffer.Length,
+                        (SendInfo*)Unsafe.AsPointer(ref sendInfo));
 
-                // TODO: System.IO.Pipelines code for QuicheStream instance, passing recvCount and recvBuffer as input           
+                    SocketAddress sendAddr = new((AddressFamily)sendInfo.to.ss_family, sendInfo.to_len);
+                    Span<byte> sendAddrSpan = new Span<byte>((byte*)Unsafe.AsPointer(ref sendInfo.to), sendInfo.to_len);
+                    sendAddrSpan.CopyTo(sendAddr.Buffer.Span);
+
+                    ReadOnlySpan<byte> sendBuf = new(bufPtr, (int)sendCount);
+                    dgramSocket.SendTo(sendBuf, SocketFlags.None, sendAddr);
+                    continue;
+                }
+                else if (flag)
+                {
+                    bool streamFinished = false;
+                    long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                    recvCount = quiche_conn_stream_recv(nativePtr, (ulong)streamId, bufPtr, (nuint)recvCount,
+                        (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
+                    QuicheException.ThrowIfError((QuicheError)errorCode, "An unexpected error occured in quiche!");
+
+                    // TODO: System.IO.Pipelines code for QuicheStream instance, passing recvCount and buffer as input           
+                }
             }
         }
     }
 
-    private static sockaddr* GetSocketAddress(EndPoint? endPoint)
+    private static (MemoryHandle, int) GetSocketAddress(EndPoint? endPoint)
     {
-        sockaddr_storage sockAddr;
-        IPEndPoint? ipEndPoint = endPoint as IPEndPoint;
-        sockAddr.ss_family = (int)(ipEndPoint?.AddressFamily ?? AddressFamily.Unknown);
-        (ipEndPoint?.Address.GetAddressBytes() ?? [])
-        .CopyTo(new Span<byte>(sockAddr.data, 64));
-
-        return (sockaddr*)Unsafe.AsPointer(ref sockAddr);
+        Memory<byte>? buf = endPoint?.Serialize().Buffer;
+        return buf is null ? default : (buf.Value.Pin(), buf.Value.Length);
     }
 
     public static QuicheConnection Accept(QuicheConfig config)
@@ -86,9 +96,16 @@ public unsafe class QuicheConnection
         Socket localSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
         Socket remoteSocket = localSocket.Accept();
 
-        return new(quiche_accept(null, 0, null, 0,
-            GetSocketAddress(localSocket.LocalEndPoint), sizeof(sockaddr_storage), 
-            GetSocketAddress(remoteSocket.RemoteEndPoint), sizeof(sockaddr_storage),
-            config.NativePtr), localSocket);
+        var (local, local_len) = GetSocketAddress(localSocket.LocalEndPoint);
+        var (remote, remote_len) = GetSocketAddress(remoteSocket.RemoteEndPoint);
+
+        using (local)
+        using (remote)
+        {
+            return new(quiche_accept(null, 0, null, 0, 
+                (sockaddr*)local.Pointer, local_len, 
+                (sockaddr*)remote.Pointer, remote_len, 
+                config.NativePtr), localSocket);
+        }
     }
 }

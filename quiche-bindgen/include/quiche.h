@@ -236,7 +236,7 @@ int quiche_config_set_cc_algorithm_name(quiche_config *config, const char *algo)
 // Sets the initial cwnd for the connection in terms of packet count.
 void quiche_config_set_initial_congestion_window_packets(quiche_config *config, size_t packets);
 
-enum quiche_cc_algorithm {
+enum quiche_cc_algorithm : int32_t {
     QUICHE_CC_RENO = 0,
     QUICHE_CC_CUBIC = 1,
     QUICHE_CC_BBR = 2,
@@ -396,7 +396,7 @@ ssize_t quiche_conn_stream_send(quiche_conn *conn, uint64_t stream_id,
                                 uint64_t *out_error_code);
 
 // The side of the stream to be shut down.
-enum quiche_shutdown {
+enum quiche_shutdown : int32_t {
     QUICHE_SHUTDOWN_READ = 0,
     QUICHE_SHUTDOWN_WRITE = 1,
 };
@@ -776,7 +776,7 @@ int quiche_conn_migrate(quiche_conn *conn,
                              const struct sockaddr *peer, socklen_t peer_len,
                              uint64_t *seq);
 
-enum quiche_path_event_type {
+enum quiche_path_event_type : int32_t {
     QUICHE_PATH_EVENT_NEW,
     QUICHE_PATH_EVENT_VALIDATED,
     QUICHE_PATH_EVENT_FAILED_VALIDATION,
