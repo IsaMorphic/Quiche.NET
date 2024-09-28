@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
@@ -13,7 +14,9 @@ public unsafe class QuicheConnection
 
     private Socket dgramSocket;
 
-    private readonly ConcurrentQueue<byte[]> sendQueue;
+    private readonly ConcurrentQueue<(long, byte[])> sendQueue;
+
+    private readonly ConcurrentDictionary<long, QuicheStream> streamMap;
 
 
     private QuicheConnection(Conn* nativePtr, Socket dgramSocket)
@@ -22,9 +25,72 @@ public unsafe class QuicheConnection
         this.dgramSocket = dgramSocket;
 
         sendQueue = new();
+        streamMap = new();
+
+        _ = Task.Run(ReceiveDriver);
     }
 
-    private void RunDriver()
+    private class SendScheduleInfo
+    {
+        public int sendSize;
+        public byte[] sendBuffer;
+        public SocketAddress sendAddr;
+    }
+
+    private void SendPacket(object? state)
+    {
+        if (state is null) return;
+        SendScheduleInfo info = (SendScheduleInfo)state;
+
+        fixed (byte* pktPtr = info.sendBuffer)
+        {
+            ReadOnlySpan<byte> sendBuf = new(pktPtr, info.sendSize);
+            dgramSocket.SendTo(sendBuf, SocketFlags.None, info.sendAddr);
+        }
+    }
+
+    private void SendDriver()
+    {
+        byte[] packetBuf = ArrayPool<byte>.Shared.Rent(512);
+        SendScheduleInfo info = new() { sendBuffer = packetBuf };
+        System.Threading.Timer timer = new Timer(SendPacket, info, 0, Timeout.Infinite);
+
+        for (; ; )
+        {
+            if (sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
+            {
+                fixed (byte* bufPtr = pair.buf)
+                {
+                    long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                    quiche_conn_stream_send(nativePtr,
+                        (ulong)pair.streamId, bufPtr,
+                        (nuint)pair.buf.Length, false /* TODO: Figure out when streams close! */,
+                        (ulong*)Unsafe.AsPointer(ref errorCode));
+                }
+
+                SendInfo sendInfo = default;
+                long sendCount;
+                fixed (byte* pktPtr = info.sendBuffer)
+                {
+                    sendCount = (long)quiche_conn_send(nativePtr, pktPtr, 
+                        (nuint)packetBuf.Length, (SendInfo*)Unsafe.AsPointer(ref sendInfo));
+                }
+
+                SocketAddress sendAddr = new((AddressFamily)sendInfo.to.ss_family, sendInfo.to_len);
+                Span<byte> sendAddrSpan = new Span<byte>((byte*)Unsafe.AsPointer(ref sendInfo.to), sendInfo.to_len);
+                sendAddrSpan.CopyTo(sendAddr.Buffer.Span);
+
+                info.sendSize = (int)sendCount;
+                info.sendAddr = sendAddr;
+
+                timer.Change(TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 10), Timeout.InfiniteTimeSpan);
+            }
+        }
+        // TODO: break loop at some point
+        ArrayPool<byte>.Shared.Return(packetBuf);
+    }
+
+    private void ReceiveDriver()
     {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(512);
 
@@ -72,7 +138,7 @@ public unsafe class QuicheConnection
                     dgramSocket.SendTo(sendBuf, SocketFlags.None, sendAddr);
                     continue;
                 }
-                
+
                 if (!flag)
                 {
                     bool streamFinished = false;
@@ -81,7 +147,8 @@ public unsafe class QuicheConnection
                         (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                     QuicheException.ThrowIfError((QuicheError)errorCode, "An unexpected error occured in quiche!");
 
-                    // TODO: System.IO.Pipelines code for QuicheStream instance, passing recvCount and buffer as input           
+                    QuicheStream stream = streamMap.GetOrAdd(streamId, id => new(this, streamId));
+                    _ = stream.BufferDataReceiveAsync(buffer, streamFinished);
                 }
             }
         }
@@ -104,9 +171,9 @@ public unsafe class QuicheConnection
         using (local)
         using (remote)
         {
-            return new(quiche_accept(null, 0, null, 0, 
-                (sockaddr*)local.Pointer, local_len, 
-                (sockaddr*)remote.Pointer, remote_len, 
+            return new(quiche_accept(null, 0, null, 0,
+                (sockaddr*)local.Pointer, local_len,
+                (sockaddr*)remote.Pointer, remote_len,
                 config.NativePtr), localSocket);
         }
     }
