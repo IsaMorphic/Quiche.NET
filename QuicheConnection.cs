@@ -26,9 +26,10 @@ public unsafe class QuicheConnection
 
     private void RunDriver()
     {
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(512);
+
         for (; ; )
         {
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(512);
             EndPoint remoteEndPoint = new IPEndPoint(IPAddress.None, 0);
             int readCount = dgramSocket.ReceiveFrom(buffer, ref remoteEndPoint);
 
