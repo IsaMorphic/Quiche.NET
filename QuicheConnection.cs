@@ -71,7 +71,8 @@ public unsafe class QuicheConnection
                     dgramSocket.SendTo(sendBuf, SocketFlags.None, sendAddr);
                     continue;
                 }
-                else if (flag)
+                
+                if (!flag)
                 {
                     bool streamFinished = false;
                     long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
