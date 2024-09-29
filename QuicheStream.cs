@@ -60,15 +60,10 @@ namespace Quiche.NET
                 throw new NotSupportedException();
             }
 
-            lock (recvPipe.Writer)
-            {
-                const int minimumBufferSize = 512;
+            Memory<byte> memory = recvPipe.Writer.GetMemory(1024);
 
-                Memory<byte> memory = recvPipe.Writer.GetMemory(minimumBufferSize);
-
-                buffer.CopyTo(memory.Span);
-                recvPipe.Writer.Advance(buffer.Length);
-            }
+            buffer.CopyTo(memory.Span);
+            recvPipe.Writer.Advance(buffer.Length);
 
             // Make the data available to the PipeReader.
             FlushResult result = await recvPipe.Writer.FlushAsync();
@@ -89,6 +84,7 @@ namespace Quiche.NET
                 {
                     conn.sendQueue.Enqueue((streamId, memory.ToArray()));
                 }
+                sendPipe.Reader.AdvanceTo(result.Buffer.End);
             }
         }
 
@@ -113,23 +109,12 @@ namespace Quiche.NET
         public override void SetLength(long value) =>
             throw new NotSupportedException();
 
-        public override void Close()
+        public unsafe override void Close()
         {
             base.Close();
 
             recvPipe?.Writer.Complete();
             sendPipe?.Writer.Complete();
-        }
-
-        protected unsafe override void Dispose(bool disposing)
-        {
-            base.Dispose(disposing);
-
-            if (disposing)
-            {
-                recvStream?.Dispose();
-                sendStream?.Dispose();
-            }
 
             if (CanRead)
             {
@@ -141,6 +126,17 @@ namespace Quiche.NET
             {
                 quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
                     (int)Shutdown.Write, unchecked((ulong)QuicheError.QUICHE_ERR_DONE));
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                recvStream?.Dispose();
+                sendStream?.Dispose();
             }
         }
     }
