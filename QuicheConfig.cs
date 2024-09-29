@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using static Quiche.NativeMethods;
 using static Quiche.NET.QuicheLibrary;
 
