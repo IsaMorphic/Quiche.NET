@@ -18,50 +18,56 @@ public unsafe class QuicheConnection : IDisposable
         return buf is null ? default : (buf.Value.Pin(), buf.Value.Length);
     }
 
-    public static QuicheConnection Accept(QuicheConfig config)
+    public static QuicheConnection Accept(Socket socket, QuicheConfig config, byte[]? cid = null)
     {
-        Socket localSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-        Socket remoteSocket = localSocket.Accept();
+        EndPoint localEndPoint = socket.LocalEndPoint ?? throw new SocketException();
 
-        var (local, local_len) = GetSocketAddress(localSocket.LocalEndPoint);
-        var (remote, remote_len) = GetSocketAddress(remoteSocket.RemoteEndPoint);
+        EndPoint remoteEndPoint = new IPEndPoint(IPAddress.None, 0);
+        socket.ReceiveFrom([], ref remoteEndPoint);
 
-        using (local)
-        using (remote)
-        {
-            byte[] scid = RandomNumberGenerator.GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
-            fixed (byte* scidPtr = scid)
-            {
-                return new(quiche_accept(
-                    scidPtr, (nuint)scid.Length, null, 0,
-                    (sockaddr*)local.Pointer, local_len,
-                    (sockaddr*)remote.Pointer, remote_len,
-                    config.NativePtr), localSocket, scid);
-            }
-        }
-    }
-
-    public static QuicheConnection Connect(string remoteHostname, EndPoint remoteEndPoint, QuicheConfig config) 
-    {
-        Socket localSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-
-        var (local, local_len) = GetSocketAddress(localSocket.LocalEndPoint);
+        var (local, local_len) = GetSocketAddress(localEndPoint);
         var (remote, remote_len) = GetSocketAddress(remoteEndPoint);
 
         using (local)
         using (remote)
         {
-            byte[] hostnameBuf = Encoding.Default.GetBytes([..remoteHostname.ToCharArray(), '\u0000']);
-            byte[] scid = RandomNumberGenerator.GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
-
-            fixed (byte* hostnamePtr = hostnameBuf)
-            fixed (byte* scidPtr = scid)
+            byte[] scidBuf = (byte[]?)cid?.Clone() ?? RandomNumberGenerator
+                .GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
+            fixed (byte* scidPtr = scidBuf)
             {
-                return new(quiche_connect(hostnamePtr,
-                    scidPtr, (nuint)scid.Length,
+                return new(quiche_accept(
+                    scidPtr, (nuint)scidBuf.Length, null, 0,
                     (sockaddr*)local.Pointer, local_len,
                     (sockaddr*)remote.Pointer, remote_len,
-                    config.NativePtr), localSocket, scid);
+                    config.NativePtr), socket, scidBuf);
+            }
+        }
+    }
+
+    public static QuicheConnection Connect(EndPoint localEndPoint, EndPoint remoteEndPoint, 
+        QuicheConfig config, string? hostname = null, byte[]? cid = null) 
+    {
+        Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+        socket.Bind(localEndPoint);
+
+        var (local, local_len) = GetSocketAddress(localEndPoint);
+        var (remote, remote_len) = GetSocketAddress(remoteEndPoint);
+
+        using (local)
+        using (remote)
+        {
+            byte[] hostnameBuf = Encoding.Default.GetBytes([..hostname?.ToCharArray(), '\u0000']);
+            byte[] scidBuf = (byte[]?)cid?.Clone() ?? RandomNumberGenerator
+                .GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
+
+            fixed (byte* hostnamePtr = hostnameBuf)
+            fixed (byte* scidPtr = scidBuf)
+            {
+                return new(quiche_connect(hostnamePtr,
+                    scidPtr, (nuint)scidBuf.Length,
+                    (sockaddr*)local.Pointer, local_len,
+                    (sockaddr*)remote.Pointer, remote_len,
+                    config.NativePtr), socket, scidBuf);
             }
         }
     }
@@ -102,14 +108,18 @@ public unsafe class QuicheConnection : IDisposable
     private void SendPacket(object? state)
     {
         SendScheduleInfo? info = state as SendScheduleInfo;
-        if (info?.SendSize is null || info?.SendBuffer is null || info?.SendAddr is null) return;
-
-        lock (info)
+        if (info is not null)
         {
-            fixed (byte* pktPtr = info.SendBuffer)
+            lock (info)
             {
-                ReadOnlySpan<byte> sendBuf = new(pktPtr, (int)info.SendSize);
-                dgramSocket.SendTo(sendBuf, SocketFlags.None, info.SendAddr);
+                if (info.SendBuffer is not null && info.SendAddr is not null)
+                {
+                    fixed (byte* pktPtr = info.SendBuffer)
+                    {
+                        ReadOnlySpan<byte> sendBuf = new(pktPtr, (int)info.SendSize);
+                        dgramSocket.SendTo(sendBuf, SocketFlags.None, info.SendAddr);
+                    }
+                }
             }
         }
     }
