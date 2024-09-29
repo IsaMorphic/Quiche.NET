@@ -22,7 +22,7 @@ namespace Quiche.NET
             quiche_conn_stream_readable(conn.NativePtr, (ulong)streamId);
 
         public unsafe override bool CanWrite =>
-            quiche_conn_stream_writable(conn.NativePtr, (ulong)streamId, 0) ==
+            quiche_conn_stream_writable(conn.NativePtr, (ulong)streamId, 0) !=
             (int)QuicheError.QUICHE_ERR_STREAM_STOPPED;
 
         public override bool CanSeek => false;
@@ -118,14 +118,18 @@ namespace Quiche.NET
 
             if (CanRead)
             {
-                quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
-                    (int)Shutdown.Read, unchecked((ulong)QuicheError.QUICHE_ERR_DONE));
+                QuicheException.ThrowIfError((QuicheError)
+                    quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
+                    (int)Shutdown.Read, unchecked((ulong)QuicheError.QUICHE_ERR_DONE))
+                    );
             }
 
             if (CanWrite)
             {
-                quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
-                    (int)Shutdown.Write, unchecked((ulong)QuicheError.QUICHE_ERR_DONE));
+                QuicheException.ThrowIfError((QuicheError)
+                    quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
+                    (int)Shutdown.Write, unchecked((ulong)QuicheError.QUICHE_ERR_DONE))
+                    );
             }
         }
 
