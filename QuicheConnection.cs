@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using static Quiche.NativeMethods;
@@ -40,15 +41,41 @@ public unsafe class QuicheConnection : IDisposable
         }
     }
 
+    public static QuicheConnection Connect(string remoteHostname, EndPoint remoteEndPoint, QuicheConfig config) 
+    {
+        Socket localSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+
+        var (local, local_len) = GetSocketAddress(localSocket.LocalEndPoint);
+        var (remote, remote_len) = GetSocketAddress(remoteEndPoint);
+
+        using (local)
+        using (remote)
+        {
+            byte[] hostnameBuf = Encoding.Default.GetBytes([..remoteHostname.ToCharArray(), '\u0000']);
+            byte[] scid = RandomNumberGenerator.GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
+
+            fixed (byte* hostnamePtr = hostnameBuf)
+            fixed (byte* scidPtr = scid)
+            {
+                return new(quiche_connect(hostnamePtr,
+                    scidPtr, (nuint)scid.Length,
+                    (sockaddr*)local.Pointer, local_len,
+                    (sockaddr*)remote.Pointer, remote_len,
+                    config.NativePtr), localSocket, scid);
+            }
+        }
+    }
+
     private readonly Task recvTask, sendTask;
     private readonly ConcurrentDictionary<long, QuicheStream> streamMap;
     private readonly Socket dgramSocket;
 
     internal readonly ConcurrentQueue<(long, byte[])> sendQueue;
-    internal Conn* NativePtr { get; private set; }
 
     private readonly byte[] connectionId;
-    public ReadOnlySpan<byte> ConnectionId => connectionId;
+    internal ReadOnlySpan<byte> ConnectionId => connectionId;
+
+    internal Conn* NativePtr { get; private set; }
 
     private QuicheConnection(Conn* nativePtr, Socket dgramSocket, ReadOnlySpan<byte> connectionId)
     {
@@ -67,7 +94,7 @@ public unsafe class QuicheConnection : IDisposable
 
     private class SendScheduleInfo
     {
-        public int SendSize { get; set; }
+        public long SendSize { get; set; }
         public byte[]? SendBuffer { get; set; }
         public SocketAddress? SendAddr { get; set; }
     }
@@ -81,7 +108,7 @@ public unsafe class QuicheConnection : IDisposable
         {
             fixed (byte* pktPtr = info.SendBuffer)
             {
-                ReadOnlySpan<byte> sendBuf = new(pktPtr, info.SendSize);
+                ReadOnlySpan<byte> sendBuf = new(pktPtr, (int)info.SendSize);
                 dgramSocket.SendTo(sendBuf, SocketFlags.None, info.SendAddr);
             }
         }
@@ -128,12 +155,13 @@ public unsafe class QuicheConnection : IDisposable
 
                 lock (info)
                 {
-                    info.SendSize = (int)sendCount;
+                    info.SendSize = sendCount;
                     info.SendAddr = sendAddr;
                 }
 
                 timer.Change(
-                    TimeSpan.FromSeconds(sendInfo.at.tv_sec.Value) +
+                    TimeSpan.FromSeconds(Unsafe.As<timespec, CLong>
+                        (ref sendInfo.at).Value) +
                     TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 10),
                     Timeout.InfiniteTimeSpan
                     );
@@ -203,7 +231,7 @@ public unsafe class QuicheConnection : IDisposable
                             (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                         QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
 
-                        QuicheStream stream = streamMap.GetOrAdd(streamId, id => new(this, streamId));
+                        QuicheStream stream = streamMap.GetOrAdd(streamId, id => new(this, id));
                         stream.BufferDataReceiveAsync(packetBuf, streamFinished).Wait();
                     }
                 }
@@ -214,6 +242,9 @@ public unsafe class QuicheConnection : IDisposable
             ArrayPool<byte>.Shared.Return(packetBuf);
         }
     }
+
+    public QuicheStream GetStream(long streamId) =>
+        streamMap.GetOrAdd(streamId, id => new(this, id));
 
     public void Close(int errorCode, string reason)
     {
@@ -240,7 +271,7 @@ public unsafe class QuicheConnection : IDisposable
                 }
 
                 int errorResult;
-                byte[] reasonBuf = Encoding.Default.GetBytes("Connection was implicitly closed for garbage collection.");
+                byte[] reasonBuf = Encoding.Default.GetBytes("Connection was implicitly closed for user initiated disposal.");
                 fixed (byte* reasonPtr = reasonBuf)
                 {
                     errorResult = quiche_conn_close(NativePtr, false, 0x0F, reasonPtr, (nuint)reasonBuf.Length);
