@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
+		<RuntimeIdentifiers>win-x64;win-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -25,7 +26,42 @@
 		<PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
 	</ItemGroup>
 
+	<PropertyGroup>
+		<RustProfile Condition="'$(Configuration)' == 'Release'">release</RustProfile>
+		<RustProfile Condition="'$(Configuration)' == 'Debug'">dev</RustProfile>
+
+		<RustConfiguration Condition="'$(Configuration)' == 'Release'">release</RustConfiguration>
+		<RustConfiguration Condition="'$(Configuration)' == 'Debug'">debug</RustConfiguration>
+
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'win-x64'">x86_64-pc-windows-msvc</RustTargetTriple>
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'win-arm64'">aarch64-pc-windows-msvc</RustTargetTriple>
+		<RustLibraryExt Condition="'$(RuntimeIdentifier)' == 'win-x64'">.dll</RustLibraryExt>
+		<RustLibraryExt Condition="'$(RuntimeIdentifier)' == 'win-arm64'">.dll</RustLibraryExt>
+
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'linux-x64'">x86_64-unknown-linux-gnu</RustTargetTriple>
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">aarch64-unknown-linux-gnu</RustTargetTriple>
+		<RustLibraryExt Condition="'$(RuntimeIdentifier)' == 'linux-x64'">.so</RustLibraryExt>
+		<RustLibraryExt Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">.so</RustLibraryExt>
+
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-x64'">x86_64-apple-darwin</RustTargetTriple>
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">aarch64-apple-darwin</RustTargetTriple>
+		<RustLibraryExt Condition="'$(RuntimeIdentifier)' == 'osx-x64'">.dylib</RustLibraryExt>
+		<RustLibraryExt Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">.dylib</RustLibraryExt>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<RustTargetOutput Include="quiche-bindgen/target/$(RustTargetTriple)/$(RustConfiguration)/*$(RustLibraryExt)" />
+		<NativeLibs Include="$(OutputPath)/runtimes/$(RuntimeIdentifier)/native/*$(RustLibraryExt)" />
+    	<None Include="@(NativeLibs)">
+      		<Pack>true</Pack>
+      		<PackageCopyToOutput>true</PackageCopyToOutput>
+			<PackagePath>runtimes/$(RuntimeIdentifier)/native</PackagePath>
+      		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    	</None>
+	</ItemGroup>
+
 	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-		<Exec WorkingDirectory="quiche-bindgen" Command="cargo build --release" />
+		<Exec WorkingDirectory="quiche-bindgen" Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple)" />
+		<Copy SourceFiles="@(RustTargetOutput)" DestinationFolder="$(OutputPath)/runtimes/$(RuntimeIdentifier)/native" />
 	</Target>
 </Project>
