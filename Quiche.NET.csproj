@@ -56,7 +56,7 @@
 
 	<ItemGroup>
 		<RustTargetOutput Include="quiche-bindgen/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLIbraryFileName)" />
-		<NativeLibs Include="$(OutputPath)/runtimes/$(RuntimeIdentifier)/native/$(RustLIbraryFileName)" />
+		<NativeLibs Include="$(OutputPath)/runtimes/$(RuntimeIdentifier)*/native/$(RustLIbraryFileName)" />
     	<None Include="@(NativeLibs)">
       		<Pack>true</Pack>
       		<PackageCopyToOutput>true</PackageCopyToOutput>
