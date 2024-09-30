@@ -44,8 +44,8 @@ public unsafe class QuicheConnection : IDisposable
         }
     }
 
-    public static QuicheConnection Connect(EndPoint localEndPoint, EndPoint remoteEndPoint, 
-        QuicheConfig config, string? hostname = null, byte[]? cid = null) 
+    public static QuicheConnection Connect(EndPoint localEndPoint, EndPoint remoteEndPoint,
+        QuicheConfig config, string? hostname = null, byte[]? cid = null)
     {
         Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
         socket.Bind(localEndPoint);
@@ -56,7 +56,7 @@ public unsafe class QuicheConnection : IDisposable
         using (local)
         using (remote)
         {
-            byte[] hostnameBuf = Encoding.Default.GetBytes([..hostname?.ToCharArray(), '\u0000']);
+            byte[] hostnameBuf = Encoding.Default.GetBytes([.. hostname?.ToCharArray(), '\u0000']);
             byte[] scidBuf = (byte[]?)cid?.Clone() ?? RandomNumberGenerator
                 .GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
 
@@ -73,6 +73,7 @@ public unsafe class QuicheConnection : IDisposable
     }
 
     private readonly Task recvTask, sendTask;
+    private readonly TaskCompletionSource connEstablishedTcs;
     private readonly ConcurrentDictionary<long, QuicheStream> streamMap;
     private readonly Socket dgramSocket;
 
@@ -82,6 +83,8 @@ public unsafe class QuicheConnection : IDisposable
     internal ReadOnlySpan<byte> ConnectionId => connectionId;
 
     internal Conn* NativePtr { get; private set; }
+
+    public Task ConnectionEstablished => connEstablishedTcs.Task;
 
     private QuicheConnection(Conn* nativePtr, Socket dgramSocket, ReadOnlySpan<byte> connectionId)
     {
@@ -93,6 +96,8 @@ public unsafe class QuicheConnection : IDisposable
 
         sendQueue = new();
         streamMap = new();
+
+        connEstablishedTcs = new();
 
         recvTask = Task.Run(ReceiveDriver);
         sendTask = Task.Run(SendDriver);
@@ -136,8 +141,10 @@ public unsafe class QuicheConnection : IDisposable
             for (; ; )
             {
                 long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                if (sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
+                if (quiche_conn_is_established(NativePtr) &&
+                    sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
                 {
+                    connEstablishedTcs.TrySetResult();
                     fixed (byte* bufPtr = pair.buf)
                     {
                         quiche_conn_stream_send(
@@ -177,6 +184,11 @@ public unsafe class QuicheConnection : IDisposable
                     );
             }
         }
+        catch (QuicheException ex)
+        {
+            connEstablishedTcs.TrySetException(ex);
+            throw;
+        }
         finally
         {
             ArrayPool<byte>.Shared.Return(packetBuf);
@@ -205,10 +217,9 @@ public unsafe class QuicheConnection : IDisposable
                     from_len = from_len,
                 };
 
-                long streamId;
-                long recvCount;
                 fixed (byte* bufPtr = packetBuf)
                 {
+                    long recvCount;
                     using (to)
                     using (from)
                     {
@@ -216,24 +227,8 @@ public unsafe class QuicheConnection : IDisposable
                             (nuint)readCount, (RecvInfo*)Unsafe.AsPointer(ref recvInfo));
                     }
 
-                    bool flag;
-                    streamId = quiche_conn_stream_readable_next(NativePtr);
-                    if ((flag = streamId < 0) && (streamId = quiche_conn_stream_writable_next(NativePtr)) < 0)
-                    {
-                        SendInfo sendInfo = default;
-                        long sendCount = (long)quiche_conn_send(NativePtr, bufPtr, (nuint)packetBuf.Length,
-                            (SendInfo*)Unsafe.AsPointer(ref sendInfo));
-
-                        SocketAddress sendAddr = new((AddressFamily)sendInfo.to.ss_family, sendInfo.to_len);
-                        Span<byte> sendAddrSpan = new Span<byte>((byte*)Unsafe.AsPointer(ref sendInfo.to), sendInfo.to_len);
-                        sendAddrSpan.CopyTo(sendAddr.Buffer.Span);
-
-                        ReadOnlySpan<byte> sendBuf = new(bufPtr, (int)sendCount);
-                        dgramSocket.SendTo(sendBuf, SocketFlags.None, sendAddr);
-                        continue;
-                    }
-
-                    if (!flag)
+                    long streamId = quiche_conn_stream_readable_next(NativePtr);
+                    if (streamId >= 0)
                     {
                         bool streamFinished = false;
                         long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
@@ -256,17 +251,6 @@ public unsafe class QuicheConnection : IDisposable
     public QuicheStream GetStream(long streamId) =>
         streamMap.GetOrAdd(streamId, id => new(this, id));
 
-    public void Close(int errorCode, string reason)
-    {
-        int errorResult;
-        byte[] reasonBuf = Encoding.Default.GetBytes(reason);
-        fixed (byte* reasonPtr = reasonBuf)
-        {
-            errorResult = quiche_conn_close(NativePtr, true, (ulong)errorCode, reasonPtr, (nuint)reasonBuf.Length);
-        }
-        QuicheException.ThrowIfError((QuicheError)errorResult, "Failed to close connection!");
-    }
-
     private bool disposedValue;
 
     protected virtual void Dispose(bool disposing)
@@ -284,7 +268,7 @@ public unsafe class QuicheConnection : IDisposable
                 byte[] reasonBuf = Encoding.Default.GetBytes("Connection was implicitly closed for user initiated disposal.");
                 fixed (byte* reasonPtr = reasonBuf)
                 {
-                    errorResult = quiche_conn_close(NativePtr, false, 0x0F, reasonPtr, (nuint)reasonBuf.Length);
+                    errorResult = quiche_conn_close(NativePtr, true, 0x0A, reasonPtr, (nuint)reasonBuf.Length);
                 }
                 QuicheException.ThrowIfError((QuicheError)errorResult, "Failed to close connection!");
 
