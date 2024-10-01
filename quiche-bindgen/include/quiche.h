@@ -32,8 +32,11 @@
 #include <stddef.h>
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <time.h>
 #else
+#include <sys/sockets.h>
 #include <sys/time.h>
 #endif
 
@@ -49,20 +52,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-// sys/sockets.h
-
-typedef int socklen_t;
-typedef int sa_family_t;
-
-struct sockaddr {
-    sa_family_t ss_family;
-};
-
-struct sockaddr_storage {
-    sa_family_t ss_family;
-    uint8_t data[64];
-};
 
 // QUIC transport API.
 //

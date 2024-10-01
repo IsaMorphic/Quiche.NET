@@ -18,7 +18,7 @@ public class QuicheConnection : IDisposable
         return buf is null ? default : (buf.Value.Pin(), buf.Value.Length);
     }
 
-    public unsafe static QuicheConnection Accept(Socket socket, 
+    public unsafe static QuicheConnection Accept(Socket socket,
         EndPoint remoteEndPoint, ReadOnlyMemory<byte> initialData,
         QuicheConfig config, byte[]? cid = null)
     {
@@ -39,7 +39,7 @@ public class QuicheConnection : IDisposable
                     scidPtr, (nuint)scidBuf.Length, null, 0,
                     (sockaddr*)local.Pointer, local_len,
                     (sockaddr*)remote.Pointer, remote_len,
-                    config.NativePtr), 
+                    config.NativePtr),
                     socket, remoteEndPoint,
                     initialData, scidBuf);
             }
@@ -69,7 +69,7 @@ public class QuicheConnection : IDisposable
                     scidPtr, (nuint)scidBuf.Length,
                     (sockaddr*)local.Pointer, local_len,
                     (sockaddr*)remote.Pointer, remote_len,
-                    config.NativePtr), 
+                    config.NativePtr),
                     socket, remoteEndPoint,
                     Memory<byte>.Empty, scidBuf);
             }
@@ -139,7 +139,7 @@ public class QuicheConnection : IDisposable
 
     private unsafe void SendDriver()
     {
-        byte[] packetBuf = ArrayPool<byte>.Shared.Rent(1024);
+        byte[] packetBuf = ArrayPool<byte>.Shared.Rent(4096);
 
         SendScheduleInfo info = new() { SendBuffer = packetBuf };
         Timer timer = new Timer(SendPacket, info, Timeout.Infinite, Timeout.Infinite);
@@ -150,7 +150,7 @@ public class QuicheConnection : IDisposable
             {
                 long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                 if (quiche_conn_is_established(NativePtr) &&
-                    (establishedTcs.TrySetResult() || EstablishedTask.IsCompleted) && 
+                    (establishedTcs.TrySetResult() || EstablishedTask.IsCompleted) &&
                     sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
                 {
                     fixed (byte* bufPtr = pair.buf)
@@ -175,22 +175,25 @@ public class QuicheConnection : IDisposable
                         (nuint)packetBuf.Length, (SendInfo*)Unsafe.AsPointer(ref sendInfo));
                 }
 
-                SocketAddress sendAddr = new((AddressFamily)sendInfo.to.ss_family, sendInfo.to_len);
-                Span<byte> sendAddrSpan = new Span<byte>((byte*)Unsafe.AsPointer(ref sendInfo.to), sendInfo.to_len);
-                sendAddrSpan.CopyTo(sendAddr.Buffer.Span);
-
-                lock (info)
+                if (sendCount > 0)
                 {
-                    info.SendSize = sendCount;
-                    info.SendAddr = sendAddr;
-                }
+                    SocketAddress sendAddr = new((AddressFamily)sendInfo.to.ss_family, sendInfo.to_len);
+                    Span<byte> sendAddrSpan = new Span<byte>((byte*)Unsafe.AsPointer(ref sendInfo.to), sendInfo.to_len);
+                    sendAddrSpan.CopyTo(sendAddr.Buffer.Span);
 
-                timer.Change(
-                    TimeSpan.FromSeconds(Unsafe.As<timespec, CLong>
-                        (ref sendInfo.at).Value) +
-                    TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 10),
-                    Timeout.InfiniteTimeSpan
-                    );
+                    lock (info)
+                    {
+                        info.SendSize = sendCount;
+                        info.SendAddr = sendAddr;
+                    }
+
+                    timer.Change(
+                        TimeSpan.FromSeconds(Unsafe.As<timespec, CLong>
+                            (ref sendInfo.at).Value) +
+                        TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 10),
+                        Timeout.InfiniteTimeSpan
+                        );
+                }
             }
         }
         catch (QuicheException ex)
@@ -251,10 +254,10 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                socket.ReceiveFrom(packetBuf, ref remoteEndPoint);
+                readCount = socket.ReceiveFrom(packetBuf, ref remoteEndPoint);
             }
         }
-        catch(QuicheException ex)
+        catch (QuicheException ex)
         {
             establishedTcs.TrySetException(ex);
             throw;
