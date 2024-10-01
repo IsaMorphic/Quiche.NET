@@ -12,10 +12,26 @@
 	<ItemGroup>
 		<Compile Remove="quiche-bindgen\**" />
 		<Compile Remove="quiche\**" />
+		<Compile Remove="*.git*" />
+
 		<EmbeddedResource Remove="quiche-bindgen\**" />
 		<EmbeddedResource Remove="quiche\**" />
+		<EmbeddedResource Remove="*.git*" />
+
 		<None Remove="quiche-bindgen\**" />
 		<None Remove="quiche\**" />
+		<None Remove="*.git*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Remove="LICENSE.txt" />
+		<Compile Remove="README.md" />
+
+		<EmbeddedResource Remove="LICENSE.txt" />
+		<EmbeddedResource Remove="README.md" />
+
+		<None Include="LICENSE.txt" Pack="true" />
+		<None Include="README.md" Pack="true" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -56,17 +72,17 @@
 
 	<ItemGroup>
 		<RustTargetOutput Include="quiche-bindgen/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLIbraryFileName)" />
-		<NativeLibs Include="$(OutputPath)/runtimes/$(RuntimeIdentifier)*/native/$(RustLIbraryFileName)" />
-    	<None Include="@(NativeLibs)">
+		<NativeLibs Condition="'$(RuntimeIdentifier)' != ''" 
+			Include="runtimes/$(RuntimeIdentifier)/native/$(RustLIbraryFileName)" />
+    	<None Condition="'$(RuntimeIdentifier)' != ''" Include="@(NativeLibs)">
       		<Pack>true</Pack>
       		<PackageCopyToOutput>true</PackageCopyToOutput>
-			<PackagePath>runtimes/$(RuntimeIdentifier)/native</PackagePath>
       		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     	</None>
 	</ItemGroup>
 
-	<Target Name="RustC" BeforeTargets="PreBuildEvent">
+	<Target Condition="'$(RuntimeIdentifier)' != ''" Name="rustc" BeforeTargets="PreBuildEvent">
 		<Exec WorkingDirectory="quiche-bindgen" Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple)" />
-		<Copy SourceFiles="@(RustTargetOutput)" DestinationFolder="$(OutputPath)/runtimes/$(RuntimeIdentifier)/native" />
+		<Copy SourceFiles="@(RustTargetOutput)" DestinationFolder="runtimes/$(RuntimeIdentifier)/native" />
 	</Target>
 </Project>
