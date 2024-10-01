@@ -12,14 +12,17 @@
 	<ItemGroup>
 		<Compile Remove="quiche-bindgen\**" />
 		<Compile Remove="quiche\**" />
+		<Compile Remove="runtimes\**" />
 		<Compile Remove="*.git*" />
 
 		<EmbeddedResource Remove="quiche-bindgen\**" />
 		<EmbeddedResource Remove="quiche\**" />
+		<EmbeddedResource Remove="runtimes\**" />
 		<EmbeddedResource Remove="*.git*" />
 
 		<None Remove="quiche-bindgen\**" />
 		<None Remove="quiche\**" />
+		<None Remove="runtimes\**" />
 		<None Remove="*.git*" />
 	</ItemGroup>
 
