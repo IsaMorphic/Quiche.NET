@@ -243,6 +243,11 @@ public unsafe class QuicheConnection : IDisposable
                 }
             }
         }
+        catch(QuicheException ex)
+        {
+            connEstablishedTcs.TrySetException(ex);
+            throw;
+        }
         finally
         {
             ArrayPool<byte>.Shared.Return(packetBuf);
