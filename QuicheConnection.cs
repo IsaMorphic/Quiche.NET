@@ -143,16 +143,17 @@ public unsafe class QuicheConnection : IDisposable
             {
                 long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                 if (quiche_conn_is_established(NativePtr) &&
+                    (connEstablishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted) && 
                     sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
                 {
-                    connEstablishedTcs.TrySetResult();
                     fixed (byte* bufPtr = pair.buf)
                     {
+                        QuicheStream stream = GetStream(pair.streamId);
                         quiche_conn_stream_send(
                             NativePtr, (ulong)pair.streamId,
                             bufPtr, (nuint)pair.buf.Length,
-                            streamMap[pair.streamId].CanWrite,
-                            (ulong*)Unsafe.AsPointer(ref errorCode)
+                            stream.CanWrite, (ulong*)
+                            Unsafe.AsPointer(ref errorCode)
                             );
                     }
                 }
