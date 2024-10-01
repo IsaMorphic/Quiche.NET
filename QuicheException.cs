@@ -14,7 +14,7 @@
 
         public static void ThrowIfError(QuicheError errorCode, string? message = null)
         {
-            if (errorCode == QuicheError.QUICHE_ERR_NONE) 
+            if (errorCode >= 0) 
             {
                 return;
             }
