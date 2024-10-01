@@ -20,7 +20,8 @@ public unsafe class QuicheConnection : IDisposable
 
     public static QuicheConnection Accept(Socket socket, QuicheConfig config, byte[]? cid = null)
     {
-        EndPoint localEndPoint = socket.LocalEndPoint ?? throw new SocketException();
+        EndPoint localEndPoint = socket.LocalEndPoint ?? throw new ArgumentException(
+            "Given socket was not bound to a valid local endpoint!", nameof(socket));
 
         EndPoint remoteEndPoint = new IPEndPoint(IPAddress.None, 0);
         socket.ReceiveFrom([], ref remoteEndPoint);
@@ -44,11 +45,11 @@ public unsafe class QuicheConnection : IDisposable
         }
     }
 
-    public static QuicheConnection Connect(EndPoint localEndPoint, EndPoint remoteEndPoint,
+    public static QuicheConnection Connect(Socket socket, EndPoint remoteEndPoint,
         QuicheConfig config, string? hostname = null, byte[]? cid = null)
     {
-        Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-        socket.Bind(localEndPoint);
+        EndPoint localEndPoint = socket.LocalEndPoint ?? throw new ArgumentException(
+            "Given socket was not bound to a valid local endpoint!", nameof(socket));
 
         var (local, local_len) = GetSocketAddress(localEndPoint);
         var (remote, remote_len) = GetSocketAddress(remoteEndPoint);
@@ -236,7 +237,7 @@ public unsafe class QuicheConnection : IDisposable
                             (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                         QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
 
-                        QuicheStream stream = streamMap.GetOrAdd(streamId, id => new(this, id));
+                        QuicheStream stream = GetStream(streamId);
                         stream.BufferDataReceiveAsync(packetBuf, streamFinished).Wait();
                     }
                 }
