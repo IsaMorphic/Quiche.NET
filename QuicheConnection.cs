@@ -140,9 +140,9 @@ public class QuicheConnection : IDisposable
         SendScheduleInfo info = new() { SendBuffer = packetBuf };
         Timer timer = new Timer(SendPacket, info, Timeout.Infinite, Timeout.Infinite);
 
-        try
+        for (; ; )
         {
-            for (; ; )
+            try
             {
                 long resultOrError;
                 if (quiche_conn_is_established(NativePtr) &&
@@ -189,11 +189,14 @@ public class QuicheConnection : IDisposable
                     Timeout.InfiniteTimeSpan
                     );
             }
-        }
-        catch (QuicheException ex)
-        {
-            establishedTcs.TrySetException(ex);
-            throw;
+            catch (QuicheException ex) when
+                (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+            { break; }
+            catch (QuicheException ex)
+            {
+                establishedTcs.TrySetException(ex);
+                throw;
+            }
         }
     }
 
@@ -204,9 +207,9 @@ public class QuicheConnection : IDisposable
 
         int readCount = initialData.Length;
         EndPoint remoteEndPoint = this.remoteEndPoint;
-        try
+        for (; ; )
         {
-            for (; ; )
+            try
             {
                 var (to, to_len) = GetSocketAddress(socket.LocalEndPoint);
                 var (from, from_len) = GetSocketAddress(remoteEndPoint);
@@ -248,11 +251,14 @@ public class QuicheConnection : IDisposable
 
                 readCount = socket.ReceiveFrom(packetBuf, ref remoteEndPoint);
             }
-        }
-        catch (QuicheException ex)
-        {
-            establishedTcs.TrySetException(ex);
-            throw;
+            catch (QuicheException ex) when
+            (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+            { break; }
+            catch (QuicheException ex)
+            {
+                establishedTcs.TrySetException(ex);
+                throw;
+            }
         }
     }
 
@@ -272,13 +278,18 @@ public class QuicheConnection : IDisposable
                     stream.Dispose();
                 }
 
-                int errorResult;
-                byte[] reasonBuf = Encoding.UTF8.GetBytes("Connection was implicitly closed for user initiated disposal.");
-                fixed (byte* reasonPtr = reasonBuf)
+                try
                 {
-                    errorResult = quiche_conn_close(NativePtr, true, 0x0A, reasonPtr, (nuint)reasonBuf.Length);
+                    int errorResult;
+                    byte[] reasonBuf = Encoding.UTF8.GetBytes("Connection was implicitly closed for user initiated disposal.");
+                    fixed (byte* reasonPtr = reasonBuf)
+                    {
+                        errorResult = quiche_conn_close(NativePtr, true, 0xFFFF, reasonPtr, (nuint)reasonBuf.Length);
+                        QuicheException.ThrowIfError((QuicheError)errorResult, "Failed to close connection!");
+                    }
                 }
-                QuicheException.ThrowIfError((QuicheError)errorResult, "Failed to close connection!");
+                catch (QuicheException ex)
+                when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE) { }
 
                 try
                 {
