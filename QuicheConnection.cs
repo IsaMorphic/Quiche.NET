@@ -88,6 +88,7 @@ public class QuicheConnection : IDisposable
 
     private readonly TaskCompletionSource establishedTcs;
     private readonly ConcurrentDictionary<long, QuicheStream> streamMap;
+    private readonly ConcurrentBag<TaskCompletionSource<QuicheStream>> streamBag;
 
     private readonly Socket socket;
     private readonly EndPoint remoteEndPoint;
@@ -116,6 +117,7 @@ public class QuicheConnection : IDisposable
         recvQueue = new();
 
         streamMap = new();
+        streamBag = new();
 
         establishedTcs = new();
 
@@ -298,6 +300,11 @@ public class QuicheConnection : IDisposable
                         }
 
                         QuicheStream stream = GetStream(streamIdOrNone);
+                        if(streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                        {
+                            tcs.TrySetResult(stream);
+                        }
+
                         await stream.ReceiveDataAsync(
                             packetBuf.AsMemory(0, (int)recvCount),
                             streamFinished, cancellationToken
@@ -334,6 +341,12 @@ public class QuicheConnection : IDisposable
 
     public QuicheStream GetStream(long streamId) =>
         streamMap.GetOrAdd(streamId, id => new(this, id));
+
+    public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
+    {
+        TaskCompletionSource<QuicheStream> tcs = new(); streamBag.Add(tcs);
+        return await tcs.Task.WaitAsync(cancellationToken);;
+    }
 
     private bool disposedValue;
 
