@@ -37,6 +37,7 @@ public class QuicheListener : IDisposable
             else if (connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
             {
                 QuicheConnection conn = QuicheConnection.Accept(socket, recvResult.RemoteEndPoint, receivedBytes, config);
+                connMap.TryAdd(recvResult.RemoteEndPoint, conn);
                 tcs.TrySetResult(conn);
             }
         }
