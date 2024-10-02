@@ -36,11 +36,11 @@
 #include <ws2tcpip.h>
 #include <time.h>
 #else
-#include <sys/sockets.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #endif
 
-#ifndef _MSC_VER
+#ifdef __unix__
 #include <sys/types.h>
 #endif
 #ifdef _MSC_VER
