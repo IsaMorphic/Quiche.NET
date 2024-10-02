@@ -178,6 +178,7 @@ public class QuicheConnection : IDisposable
                 SendInfo sendInfo = default;
                 unsafe
                 {
+                    NativePtr->OnTimeout();
                     fixed (byte* pktPtr = info.SendBuffer)
                     {
                         resultOrError = (long)NativePtr->Send(
