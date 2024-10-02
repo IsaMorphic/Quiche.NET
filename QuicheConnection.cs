@@ -380,8 +380,6 @@ public class QuicheConnection : IDisposable
                     recvQueue.Clear();
 
                     streamMap.Clear();
-                    
-                    socket.Dispose();
                 }
             }
 

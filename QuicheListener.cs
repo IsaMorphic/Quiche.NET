@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace Quiche.NET;
 
-public class QuicheListener
+public class QuicheListener : IDisposable
 {
     private readonly ConcurrentDictionary<EndPoint, QuicheConnection> connMap;
     private readonly ConcurrentBag<TaskCompletionSource<QuicheConnection>> connBag;
@@ -44,9 +44,35 @@ public class QuicheListener
 
     public async Task<QuicheConnection> AcceptAsync(CancellationToken cancellationToken)
     {
-        TaskCompletionSource<QuicheConnection> tcs = new();
-        connBag.Add(tcs);
-
+        TaskCompletionSource<QuicheConnection> tcs = new(); connBag.Add(tcs);
         return await tcs.Task.WaitAsync(cancellationToken);;
+    }
+
+
+    private bool disposedValue;
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+                foreach(QuicheConnection conn in connMap.Values)
+                {
+                    conn.Dispose();
+                }
+
+                connMap.Clear();
+                connBag.Clear();
+            }
+
+            disposedValue = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 }
