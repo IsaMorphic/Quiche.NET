@@ -10,6 +10,8 @@ namespace Quiche.NET
 
         public const uint MIN_CLIENT_INITIAL_LEN = 1200;
 
+        public const uint MAX_DATAGRAM_LEN = 6115;
+
         public unsafe static string VersionCode 
         { 
             get 

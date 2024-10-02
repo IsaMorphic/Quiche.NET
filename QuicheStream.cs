@@ -53,7 +53,7 @@ namespace Quiche.NET
             }
         }
 
-        internal async Task<bool> BufferDataReceiveAsync(byte[] buffer, bool finished)
+        internal ValueTask<FlushResult> ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
         {
             if (recvPipe is null)
             {
@@ -62,18 +62,17 @@ namespace Quiche.NET
 
             Memory<byte> memory = recvPipe.Writer.GetMemory(1024);
 
-            buffer.CopyTo(memory.Span);
-            recvPipe.Writer.Advance(buffer.Length);
+            bufIn.CopyTo(memory);
+            recvPipe.Writer.Advance(bufIn.Length);
 
             // Make the data available to the PipeReader.
-            FlushResult result = await recvPipe.Writer.FlushAsync();
-
+            var flushTask = recvPipe.Writer.FlushAsync(cancellationToken);
             if (finished)
             {
-                await recvPipe.Writer.CompleteAsync();
+                recvPipe.Writer.Complete();
             }
 
-            return result.IsCompleted;
+            return flushTask;
         }
 
         public override void Flush()
