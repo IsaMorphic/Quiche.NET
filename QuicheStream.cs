@@ -22,7 +22,7 @@ namespace Quiche.NET
             quiche_conn_stream_readable(conn.NativePtr, (ulong)streamId);
 
         public unsafe override bool CanWrite =>
-            quiche_conn_stream_writable(conn.NativePtr, (ulong)streamId, 0) !=
+            quiche_conn_stream_writable(conn.NativePtr, (ulong)streamId, QuicheLibrary.MAX_DATAGRAM_LEN) !=
             (int)QuicheError.QUICHE_ERR_STREAM_STOPPED;
 
         public override bool CanSeek => false;
@@ -60,7 +60,7 @@ namespace Quiche.NET
                 throw new NotSupportedException();
             }
 
-            Memory<byte> memory = recvPipe.Writer.GetMemory(1024);
+            Memory<byte> memory = recvPipe.Writer.GetMemory((int)QuicheLibrary.MAX_DATAGRAM_LEN);
 
             bufIn.CopyTo(memory);
             recvPipe.Writer.Advance(bufIn.Length);
@@ -99,6 +99,7 @@ namespace Quiche.NET
             else
             {
                 sendStream.Write(buffer, offset, count);
+                Flush();
             }
         }
 
