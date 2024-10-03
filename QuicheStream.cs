@@ -1,6 +1,5 @@
 ﻿
 using System.IO.Pipelines;
-using static Quiche.NativeMethods;
 
 namespace Quiche.NET
 {
@@ -19,10 +18,10 @@ namespace Quiche.NET
         private readonly QuicheConnection conn;
 
         public unsafe override bool CanRead =>
-            quiche_conn_stream_readable(conn.NativePtr, (ulong)streamId);
+            conn.NativePtr->StreamReadable((ulong)streamId);
 
         public unsafe override bool CanWrite =>
-            quiche_conn_stream_writable(conn.NativePtr, (ulong)streamId, QuicheLibrary.MAX_DATAGRAM_LEN) !=
+            conn.NativePtr->StreamWritable((ulong)streamId, 0) !=
             (int)QuicheError.QUICHE_ERR_STREAM_STOPPED;
 
         public override bool CanSeek => false;
@@ -119,16 +118,18 @@ namespace Quiche.NET
             if (CanRead)
             {
                 QuicheException.ThrowIfError((QuicheError)
-                    quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
-                    (int)Shutdown.Read, unchecked((ulong)QuicheError.QUICHE_ERR_DONE))
+                    conn.NativePtr->StreamShutdown((ulong)streamId,
+                    (int)Shutdown.Read, unchecked((ulong)QuicheError.QUICHE_ERR_DONE)),
+                    $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
                     );
             }
 
             if (CanWrite)
             {
                 QuicheException.ThrowIfError((QuicheError)
-                    quiche_conn_stream_shutdown(conn.NativePtr, (ulong)streamId,
-                    (int)Shutdown.Write, unchecked((ulong)QuicheError.QUICHE_ERR_DONE))
+                    conn.NativePtr->StreamShutdown((ulong)streamId,
+                    (int)Shutdown.Write, unchecked((ulong)QuicheError.QUICHE_ERR_DONE)),
+                    $"Failed to shutdown writing side of stream! (ID: {streamId:X16})"
                     );
             }
         }
