@@ -177,7 +177,7 @@ namespace Quiche.NET
         {
             set
             {
-                NativePtr->VerifyPeer(value);
+                NativePtr->Grease(value);
             }
         }
 
@@ -209,7 +209,7 @@ namespace Quiche.NET
 
         public void LoadCertificateChainFromPemFile(string filePath)
         {
-            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
+            fixed (byte* filePathPtr = Encoding.UTF8.GetBytes([.. filePath.ToCharArray(), '\u0000']))
             {
                 QuicheException.ThrowIfError(
                     (QuicheError)NativePtr->LoadCertChainFromPemFile(filePathPtr),
@@ -220,7 +220,7 @@ namespace Quiche.NET
 
         public void LoadPrivateKeyFromPemFile(string filePath)
         {
-            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
+            fixed (byte* filePathPtr = Encoding.UTF8.GetBytes([..filePath.ToCharArray(), '\u0000']))
             {
                 QuicheException.ThrowIfError(
                     (QuicheError)NativePtr->LoadPrivKeyFromPemFile(filePathPtr),
@@ -231,7 +231,7 @@ namespace Quiche.NET
 
         public void LoadVerifyLocationsFromDirectory(string path)
         {
-            fixed (byte* pathPtr = Encoding.Default.GetBytes(path))
+            fixed (byte* pathPtr = Encoding.UTF8.GetBytes([.. path.ToCharArray(), '\u0000']))
             {
                 QuicheException.ThrowIfError(
                     (QuicheError)NativePtr->LoadVerifyLocationsFromDirectory(pathPtr),
@@ -242,7 +242,7 @@ namespace Quiche.NET
 
         public void LoadVerifyLocationsFromFile(string filePath)
         {
-            fixed (byte* filePathPtr = Encoding.Default.GetBytes(filePath))
+            fixed (byte* filePathPtr = Encoding.UTF8.GetBytes([.. filePath.ToCharArray(), '\u0000']))
             {
                 QuicheException.ThrowIfError(
                     (QuicheError)NativePtr->LoadVerifyLocationsFromFile(filePathPtr),
@@ -256,8 +256,7 @@ namespace Quiche.NET
             List<byte> protoList = new();
             foreach (string proto in protos)
             {
-                protoList.AddRange(Encoding.Default
-                    .GetBytes([.. proto.ToCharArray(), '\u0000']));
+                protoList.AddRange([(byte)proto.Length, .. Encoding.UTF8.GetBytes(proto)]);
             }
 
             fixed (byte* protosPtr = protoList.ToArray())
