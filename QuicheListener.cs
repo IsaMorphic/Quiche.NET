@@ -26,7 +26,7 @@ public class QuicheListener : IDisposable
         byte[] recvBuffer = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
         while (!cancellationToken.IsCancellationRequested)
         {
-            SocketReceiveFromResult recvResult = await socket.ReceiveFromAsync(recvBuffer, socket.LocalEndPoint);
+            SocketReceiveFromResult recvResult = await socket.ReceiveFromAsync(recvBuffer, new IPEndPoint(IPAddress.None, 0));
             ReadOnlyMemory<byte> receivedBytes = ((byte[])recvBuffer.Clone())
                     .AsMemory(0, recvResult.ReceivedBytes);
 
