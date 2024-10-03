@@ -347,11 +347,8 @@ public class QuicheConnection : IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
 
                 byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
-                SocketReceiveFromResult result;
-                do
-                {
-                    result = await socket.ReceiveFromAsync(packetBuf, remoteEndPoint, cancellationToken);
-                } while (result.RemoteEndPoint != remoteEndPoint);
+                SocketReceiveFromResult result = await socket.ReceiveFromAsync(
+                    packetBuf, remoteEndPoint, cancellationToken);
                 recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
             }
         }
