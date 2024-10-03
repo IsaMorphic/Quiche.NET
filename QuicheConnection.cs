@@ -386,23 +386,29 @@ public class QuicheConnection : IDisposable
                 catch (QuicheException ex)
                 when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
                 { }
-
-                try
-                {
-                    Task.WhenAll(recvTask, sendTask, listenTask ?? 
-                        Task.CompletedTask).Wait(cts.Token);
-                    cts.Dispose();
-                }
-                catch (AggregateException ex) when (ex.InnerExceptions.All(
-                    x => x is OperationCanceledException || x is QuicheException q &&
-                    q.ErrorCode == QuicheError.QUICHE_ERR_DONE)) { }
-                catch(OperationCanceledException) { }
                 finally
                 {
-                    sendQueue.Clear();
-                    recvQueue.Clear();
+                    CancellationToken ct = cts.Token;
+                    cts.Dispose();
 
-                    streamMap.Clear();
+                    try
+                    {
+
+                        Task.WhenAll(recvTask, sendTask, listenTask ??
+                            Task.CompletedTask).Wait(cts.Token);
+                    }
+                    catch (AggregateException ex) when (ex.InnerExceptions.All(
+                        x => x is OperationCanceledException || x is QuicheException q &&
+                        q.ErrorCode == QuicheError.QUICHE_ERR_DONE))
+                    { }
+                    catch (OperationCanceledException) { }
+                    finally
+                    {
+                        sendQueue.Clear();
+                        recvQueue.Clear();
+
+                        streamMap.Clear();
+                    }
                 }
             }
 
