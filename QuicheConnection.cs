@@ -195,7 +195,6 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                SocketAddress sendAddr;
                 SendInfo sendInfo = default;
                 unsafe
                 {
