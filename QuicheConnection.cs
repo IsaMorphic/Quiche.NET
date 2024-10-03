@@ -149,7 +149,7 @@ public class QuicheConnection : IDisposable
         {
             lock (info)
             {
-                if (info.SendBuffer is not null && info.SendAddr is not null)
+                if (info.SendBuffer is not null)
                 {
                     int bytesSent = 0;
                     while (bytesSent < info.SendCount)
