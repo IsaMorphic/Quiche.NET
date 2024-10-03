@@ -4,12 +4,10 @@ build = "build.rs"
 name = "quiche-bindgen"
 version = "0.22.0"
 edition = "2021"
+links = "quiche"
 
 [lib]
 crate-type = [ "cdylib" ]
-
-[dependencies]
-quiche = { path = "../quiche/quiche", features = ["ffi"] }
 
 [build-dependencies]
 bindgen = "*"
