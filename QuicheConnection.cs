@@ -140,7 +140,6 @@ public class QuicheConnection : IDisposable
     {
         public int SendCount { get; set; }
         public byte[]? SendBuffer { get; set; }
-        public SocketAddress? SendAddr { get; set; }
     }
 
     private void SendPacket(object? state)
@@ -156,7 +155,7 @@ public class QuicheConnection : IDisposable
                     while (bytesSent < info.SendCount)
                     {
                         var packetSpan = info.SendBuffer.AsSpan(bytesSent, info.SendCount);
-                        bytesSent += socket.SendTo(packetSpan, SocketFlags.None, info.SendAddr);
+                        bytesSent += socket.SendTo(packetSpan, remoteEndPoint);
                     }
                 }
             }
@@ -209,15 +208,10 @@ public class QuicheConnection : IDisposable
                             );
                         QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                     }
-
-                    sendAddr = new((AddressFamily)sendInfo.to.ss_family, (int)sendInfo.to_len);
-                    Span<byte> sendAddrSpan = new Span<byte>((byte*)Unsafe.AsPointer(ref sendInfo.to), (int)sendInfo.to_len);
-                    sendAddrSpan.CopyTo(sendAddr.Buffer.Span);
                 }
 
                 lock (info)
                 {
-                    info.SendAddr = sendAddr;
                     info.SendCount = (int)resultOrError;
                 }
 
