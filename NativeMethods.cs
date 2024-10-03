@@ -53,7 +53,7 @@ namespace Quiche
                     path += "arm64";
                 }
 
-                path += "/native/" + __DllName + extension;
+                path += "/native/" + (OperatingSystem.IsWindows() ? "" : "lib") + __DllName + extension;
 
                 return NativeLibrary.Load(Path.Combine(AppContext.BaseDirectory, path), assembly, searchPath);
             }

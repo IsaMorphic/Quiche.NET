@@ -1,14 +1,6 @@
 extern crate bindgen;
 
 fn main() {
-    // Tell cargo to tell rustc to link the system quiche library
-    // shared library.
-    println!("cargo:rustc-link-lib=quiche");
-
-    // Windows only
-    #[cfg(target_os = "windows")] 
-    println!("cargo:rustc-link-lib=crypt32");
-
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
@@ -31,11 +23,8 @@ fn main() {
     csbindgen::Builder::default()
     .input_bindgen_file("src/quiche.rs") // read from bindgen generated code
     .method_filter(|x| { x.starts_with("quiche") } )
-    .rust_file_header("use super::quiche::*;")     // import bindgen generated modules(struct/method)
-    .rust_method_prefix("__")
-    .csharp_entry_point_prefix("__")
-    .csharp_dll_name("quiche_bindgen")
+    .csharp_dll_name("quiche")
     .csharp_namespace("Quiche")
-    .generate_to_file("src/quiche_ffi.rs", "../NativeMethods.g.cs")
+    .generate_csharp_file("../NativeMethods.g.cs")
     .unwrap();
 }

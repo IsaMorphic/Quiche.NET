@@ -60,22 +60,22 @@
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'win-x64'">x86_64-pc-windows-msvc</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'win-arm64'">aarch64-pc-windows-msvc</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'win-x64'">quiche_bindgen.dll</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'win-arm64'">quiche_bindgen.dll</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'win-x64'">quiche.dll</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'win-arm64'">quiche.dll</RustLIbraryFileName>
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'linux-x64'">x86_64-unknown-linux-gnu</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">aarch64-unknown-linux-gnu</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-x64'">libquiche_bindgen.so</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">libquiche_bindgen.so</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-x64'">libquiche.so</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">libquiche.so</RustLIbraryFileName>
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-x64'">x86_64-apple-darwin</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">aarch64-apple-darwin</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-x64'">libquiche_bindgen.dylib</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">libquiche_bindgen.dylib</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-x64'">libquiche.dylib</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">libquiche.dylib</RustLIbraryFileName>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<RustTargetOutput Include="quiche-bindgen/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLIbraryFileName)" />
+		<RustTargetOutput Include="quiche/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLIbraryFileName)" />
 		<NativeLibs Condition="'$(RuntimeIdentifier)' != ''" 
 			Include="runtimes/$(RuntimeIdentifier)/native/$(RustLIbraryFileName)" />
     	<None Condition="'$(RuntimeIdentifier)' != ''" Include="@(NativeLibs)">
@@ -87,6 +87,7 @@
 
 	<Target Condition="'$(RuntimeIdentifier)' != ''" Name="rustc" BeforeTargets="PreBuildEvent">
 		<Exec WorkingDirectory="quiche-bindgen" Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple)" />
+		<Exec WorkingDirectory="quiche" Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple) --features ffi" />
 		<Copy SourceFiles="@(RustTargetOutput)" DestinationFolder="runtimes/$(RuntimeIdentifier)/native" />
 	</Target>
 </Project>
