@@ -193,7 +193,6 @@ public class QuicheConnection : IDisposable
                         }
                         pair.buf.AsSpan(0, (int)resultOrError).CopyTo(info.SendBuffer.AsSpan());
                     }
-                    NativePtr->OnTimeout();
                 }
 
                 SocketAddress sendAddr;
@@ -248,6 +247,7 @@ public class QuicheConnection : IDisposable
                 ReadOnlyMemory<byte> nextPacket;
                 if (!recvQueue.TryDequeue(out nextPacket))
                 {
+                    unsafe { NativePtr->OnTimeout(); }
                     await Task.Delay(75);
                     continue;
                 }
