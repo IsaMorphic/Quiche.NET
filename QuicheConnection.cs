@@ -384,31 +384,15 @@ public class QuicheConnection : IDisposable
                     }
                 }
                 catch (QuicheException ex)
-                when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-                { }
+                when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE) { }
                 finally
                 {
-                    CancellationToken ct = cts.Token;
                     cts.Dispose();
 
-                    try
-                    {
+                    sendQueue.Clear();
+                    recvQueue.Clear();
 
-                        Task.WhenAll(recvTask, sendTask, listenTask ??
-                            Task.CompletedTask).Wait(ct);
-                    }
-                    catch (AggregateException ex) when (ex.InnerExceptions.All(
-                        x => x is OperationCanceledException || x is QuicheException q &&
-                        q.ErrorCode == QuicheError.QUICHE_ERR_DONE))
-                    { }
-                    catch (OperationCanceledException) { }
-                    finally
-                    {
-                        sendQueue.Clear();
-                        recvQueue.Clear();
-
-                        streamMap.Clear();
-                    }
+                    streamMap.Clear();
                 }
             }
 
