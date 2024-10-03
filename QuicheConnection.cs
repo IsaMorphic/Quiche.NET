@@ -325,17 +325,20 @@ public class QuicheConnection : IDisposable
 
     private async Task ListenAsync(CancellationToken cancellationToken) 
     {
-        while(!cancellationToken.IsCancellationRequested)
+        using (socket)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
-            SocketReceiveFromResult result;
-            do
+            while (!cancellationToken.IsCancellationRequested)
             {
-                result = await socket.ReceiveFromAsync(packetBuf, remoteEndPoint);
-            } while (result.RemoteEndPoint != remoteEndPoint);
-            recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
+                cancellationToken.ThrowIfCancellationRequested();
+
+                byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+                SocketReceiveFromResult result;
+                do
+                {
+                    result = await socket.ReceiveFromAsync(packetBuf, remoteEndPoint);
+                } while (result.RemoteEndPoint != remoteEndPoint);
+                recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
+            }
         }
     }
 
