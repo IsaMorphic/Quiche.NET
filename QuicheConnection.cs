@@ -386,15 +386,12 @@ public class QuicheConnection : IDisposable
                 catch (QuicheException ex)
                 when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
                 { }
-                finally
-                {
-                    cts.Dispose();
-                }
 
                 try
                 {
                     Task.WhenAll(recvTask, sendTask, listenTask ?? 
                         Task.CompletedTask).Wait(cts.Token);
+                    cts.Dispose();
                 }
                 catch (AggregateException ex) when (ex.InnerExceptions.All(
                     x => x is OperationCanceledException || x is QuicheException q &&
