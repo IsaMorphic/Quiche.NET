@@ -395,7 +395,7 @@ public class QuicheConnection : IDisposable
                     {
 
                         Task.WhenAll(recvTask, sendTask, listenTask ??
-                            Task.CompletedTask).Wait(cts.Token);
+                            Task.CompletedTask).Wait(ct);
                     }
                     catch (AggregateException ex) when (ex.InnerExceptions.All(
                         x => x is OperationCanceledException || x is QuicheException q &&
