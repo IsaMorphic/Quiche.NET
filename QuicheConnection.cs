@@ -421,7 +421,6 @@ public class QuicheConnection : IDisposable
         {
             if (!disposedValue && NativePtr is not null)
             {
-
                 if (disposing)
                 {
                     foreach (var (_, stream) in streamMap)
