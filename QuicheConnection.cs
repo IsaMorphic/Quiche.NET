@@ -239,6 +239,7 @@ public class QuicheConnection : IDisposable
                 {
                     tcs.TrySetCanceled(cts.Token);
                 }
+                throw;
             }
         }
     }
@@ -352,6 +353,7 @@ public class QuicheConnection : IDisposable
                 {
                     tcs.TrySetCanceled(cts.Token);
                 }
+                throw;
             }
         }
     }
