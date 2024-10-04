@@ -17,27 +17,9 @@ namespace Quiche.NET
         private readonly long streamId;
         private readonly QuicheConnection conn;
 
-        public unsafe override bool CanRead
-        {
-            get
-            {
-                lock (conn)
-                {
-                    return !conn.NativePtr->IsClosed();
-                }
-            }
-        }
+        public unsafe override bool CanRead => conn.NativePtr->StreamReadable((ulong)streamId);
 
-        public unsafe override bool CanWrite 
-        {
-            get 
-            {
-                lock (conn) 
-                {
-                    return !conn.NativePtr->IsClosed();
-                }
-            }
-        }
+        public unsafe override bool CanWrite => !CanRead || !conn.NativePtr->IsClosed();
 
         public override bool CanSeek => false;
 
