@@ -17,12 +17,9 @@ namespace Quiche.NET
         private readonly long streamId;
         private readonly QuicheConnection conn;
 
-        public unsafe override bool CanRead =>
-            conn.NativePtr->StreamReadable((ulong)streamId);
+        public override bool CanRead => !conn.IsClosed;
 
-        public unsafe override bool CanWrite =>
-            conn.NativePtr->StreamWritable((ulong)streamId, 0) !=
-            (int)QuicheError.QUICHE_ERR_STREAM_STOPPED;
+        public override bool CanWrite => !conn.IsClosed;
 
         public override bool CanSeek => false;
 
@@ -76,6 +73,8 @@ namespace Quiche.NET
 
         public override void Flush()
         {
+            sendStream?.Flush();
+
             while (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
                 foreach (var memory in result.Buffer)
@@ -98,8 +97,9 @@ namespace Quiche.NET
             else
             {
                 sendStream.Write(buffer, offset, count);
-                Flush();
             }
+
+            Flush();
         }
 
         public override long Seek(long offset, SeekOrigin origin) =>
@@ -119,7 +119,7 @@ namespace Quiche.NET
             {
                 QuicheException.ThrowIfError((QuicheError)
                     conn.NativePtr->StreamShutdown((ulong)streamId,
-                    (int)Shutdown.Read, unchecked((ulong)QuicheError.QUICHE_ERR_DONE)),
+                    (int)Shutdown.Read, 0x00),
                     $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
                     );
             }
@@ -128,7 +128,7 @@ namespace Quiche.NET
             {
                 QuicheException.ThrowIfError((QuicheError)
                     conn.NativePtr->StreamShutdown((ulong)streamId,
-                    (int)Shutdown.Write, unchecked((ulong)QuicheError.QUICHE_ERR_DONE)),
+                    (int)Shutdown.Write, 0x00),
                     $"Failed to shutdown writing side of stream! (ID: {streamId:X16})"
                     );
             }

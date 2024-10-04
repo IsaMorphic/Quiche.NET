@@ -6,7 +6,7 @@ namespace Quiche.NET;
 
 public class QuicheListener : IDisposable
 {
-    private readonly ConcurrentDictionary<EndPoint, QuicheConnection> connMap;
+    private readonly ConcurrentDictionary<string?, QuicheConnection> connMap;
     private readonly ConcurrentBag<TaskCompletionSource<QuicheConnection>> connBag;
 
     private readonly Socket socket;
@@ -23,30 +23,51 @@ public class QuicheListener : IDisposable
 
     public async Task ListenAsync(CancellationToken cancellationToken)
     {
-        byte[] recvBuffer = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            SocketReceiveFromResult recvResult = await socket.ReceiveFromAsync(recvBuffer, socket.LocalEndPoint);
-            ReadOnlyMemory<byte> receivedBytes = ((byte[])recvBuffer.Clone())
-                    .AsMemory(0, recvResult.ReceivedBytes);
+            byte[] recvBuffer = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            if (connMap.TryGetValue(recvResult.RemoteEndPoint, out QuicheConnection? connection))
-            {
-                connection.recvQueue.Enqueue(receivedBytes);
+                SocketReceiveFromResult recvResult = await socket.ReceiveFromAsync(recvBuffer, new IPEndPoint(IPAddress.None, 0), cancellationToken);
+                ReadOnlyMemory<byte> receivedBytes = ((byte[])recvBuffer.Clone())
+                        .AsMemory(0, recvResult.ReceivedBytes);
+
+                if (connMap.TryGetValue(recvResult.RemoteEndPoint.ToString(), out QuicheConnection? connection))
+                {
+                    connection.recvQueue.Enqueue(receivedBytes);
+                }
+                else
+                {
+                    QuicheConnection conn = QuicheConnection.Accept(socket, recvResult.RemoteEndPoint, receivedBytes, config);
+                    connMap.TryAdd(recvResult.RemoteEndPoint.ToString(), conn);
+
+                    if (!connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
+                    {
+                        connBag.Add(tcs = new());
+                    }
+                    tcs.TrySetResult(conn);
+                }
             }
-            else if (connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
+        }
+        catch (OperationCanceledException)
+        {
+            while (connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
             {
-                QuicheConnection conn = QuicheConnection.Accept(socket, recvResult.RemoteEndPoint, receivedBytes, config);
-                connMap.TryAdd(recvResult.RemoteEndPoint, conn);
-                tcs.TrySetResult(conn);
+                tcs.TrySetCanceled(cancellationToken);
             }
+            throw;
         }
     }
 
     public async Task<QuicheConnection> AcceptAsync(CancellationToken cancellationToken)
     {
-        TaskCompletionSource<QuicheConnection> tcs = new(); connBag.Add(tcs);
-        return await tcs.Task.WaitAsync(cancellationToken);;
+        if (!connBag.TryPeek(out TaskCompletionSource<QuicheConnection>? tcs))
+        {
+            connBag.Add(tcs = new());
+        }
+        return await tcs.Task.WaitAsync(cancellationToken);
     }
 
 
@@ -58,13 +79,12 @@ public class QuicheListener : IDisposable
         {
             if (disposing)
             {
-                foreach(QuicheConnection conn in connMap.Values)
+                foreach (QuicheConnection conn in connMap.Values)
                 {
                     conn.Dispose();
                 }
 
                 connMap.Clear();
-                connBag.Clear();
             }
 
             disposedValue = true;
