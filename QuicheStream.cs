@@ -73,6 +73,8 @@ namespace Quiche.NET
 
         public override void Flush()
         {
+            sendStream?.Flush();
+
             while (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
                 foreach (var memory in result.Buffer)
@@ -95,8 +97,9 @@ namespace Quiche.NET
             else
             {
                 sendStream.Write(buffer, offset, count);
-                Flush();
             }
+
+            Flush();
         }
 
         public override long Seek(long offset, SeekOrigin origin) =>
