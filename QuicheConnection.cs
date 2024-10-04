@@ -415,6 +415,8 @@ public class QuicheConnection : IDisposable
     public QuicheStream GetStream(long streamId) =>
         streamMap.GetOrAdd(streamId, id => new(this, id));
 
+    public QuicheStream GetStream() => GetStream(streamMap.Keys.Max() + 1);
+
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
     {
         if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
