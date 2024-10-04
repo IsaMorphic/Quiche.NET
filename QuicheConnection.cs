@@ -103,6 +103,17 @@ public class QuicheConnection : IDisposable
 
     public Task ConnectionEstablished => establishedTcs.Task;
 
+    public unsafe bool IsClosed
+    {
+        get
+        {
+            lock (this)
+            {
+                return NativePtr->IsClosed();
+            }
+        }
+    }
+
     private unsafe QuicheConnection(Conn* nativePtr, Socket socket, EndPoint remoteEndPoint, ReadOnlyMemory<byte> initialData, ReadOnlyMemory<byte> connectionId)
     {
         NativePtr = nativePtr;
@@ -417,29 +428,38 @@ public class QuicheConnection : IDisposable
 
     protected unsafe virtual void Dispose(bool disposing)
     {
-        lock (this)
+        bool isNativeHandleValid;
+        lock (this) 
         {
-            if (!disposedValue && NativePtr is not null)
+            isNativeHandleValid = NativePtr is not null;
+        }
+
+        if (!disposedValue && isNativeHandleValid)
+        {
+            if (disposing)
             {
-                if (disposing)
+                foreach (var (_, stream) in streamMap)
                 {
-                    foreach (var (_, stream) in streamMap)
-                    {
-                        stream.Dispose();
-                    }
+                    stream.Dispose();
+                }
 
-                    try
-                    {
-                        cts.Cancel();
-                        Task.WhenAll(recvTask, sendTask,
-                            listenTask ?? Task.CompletedTask
-                            ).Wait();
-                    }
-                    catch (AggregateException ex)
-                    when (ex.InnerExceptions.All(x => x is OperationCanceledException))
-                    { }
+                try
+                {
+                    cts.Cancel();
+                    Task.WhenAll(recvTask, sendTask,
+                        listenTask ?? Task.CompletedTask
+                        ).Wait();
+                }
+                catch (AggregateException ex)
+                when (ex.InnerExceptions.All(
+                    x => x is OperationCanceledException ||
+                    x is QuicheException q && q.ErrorCode == QuicheError.QUICHE_ERR_DONE
+                    ))
+                { }
 
-                    try
+                try
+                {
+                    lock (this)
                     {
                         int errorResult;
                         byte[] reasonBuf = Encoding.UTF8.GetBytes("Connection was implicitly closed for user initiated disposal.");
@@ -449,27 +469,27 @@ public class QuicheConnection : IDisposable
                             QuicheException.ThrowIfError((QuicheError)errorResult, "Failed to close connection!");
                         }
                     }
-                    catch (QuicheException ex)
-                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-                    { }
-                    finally
-                    {
-                        cts.Dispose();
-
-                        recvQueue.Clear();
-                        sendQueue.Clear();
-
-                        streamMap.Clear();
-                        streamBag.Clear();
-                    }
                 }
+                finally
+                {
+                    cts.Dispose();
 
+                    recvQueue.Clear();
+                    sendQueue.Clear();
+
+                    streamMap.Clear();
+                    streamBag.Clear();
+                }
+            }
+
+            lock (this)
+            {
                 NativePtr->Free();
                 NativePtr = null;
             }
-
-            disposedValue = true;
         }
+
+        disposedValue = true;
     }
 
     ~QuicheConnection()
