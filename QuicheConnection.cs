@@ -254,7 +254,15 @@ public class QuicheConnection : IDisposable
                 ReadOnlyMemory<byte> nextPacket;
                 if (!recvQueue.TryDequeue(out nextPacket))
                 {
-                    unsafe { NativePtr->OnTimeout(); }
+                    unsafe 
+                    {
+                        NativePtr->OnTimeout();
+                        if (NativePtr->IsEstablished()) 
+                        {
+                            establishedTcs.TrySetResult();
+                        }
+                    }
+
                     await Task.Delay(75, cancellationToken);
                     continue;
                 }
