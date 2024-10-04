@@ -57,6 +57,7 @@ public class QuicheListener : IDisposable
             {
                 tcs.TrySetCanceled(cancellationToken);
             }
+            throw;
         }
     }
 

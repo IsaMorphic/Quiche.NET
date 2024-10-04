@@ -200,7 +200,7 @@ public class QuicheConnection : IDisposable
                                 QuicheStream stream = GetStream(pair.streamId);
                                 resultOrError = NativePtr->StreamSend(
                                     (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
-                                    stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                    !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                     );
                                 QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
                             }
