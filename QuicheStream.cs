@@ -34,7 +34,7 @@ namespace Quiche.NET
             {
                 lock (conn) 
                 {
-                    return !CanRead || conn.NativePtr->StreamWritable((ulong)streamId, 0) == 0;
+                    return !conn.NativePtr->IsClosed();
                 }
             }
         }
