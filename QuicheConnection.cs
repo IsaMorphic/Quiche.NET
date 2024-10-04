@@ -92,6 +92,7 @@ public class QuicheConnection : IDisposable
 
     private readonly Socket socket;
     private readonly EndPoint remoteEndPoint;
+    private readonly bool shouldCloseSocket;
 
     internal readonly ConcurrentQueue<(long, byte[])> sendQueue;
     internal readonly ConcurrentQueue<ReadOnlyMemory<byte>> recvQueue;
@@ -102,6 +103,17 @@ public class QuicheConnection : IDisposable
     internal unsafe Conn* NativePtr { get; private set; }
 
     public Task ConnectionEstablished => establishedTcs.Task;
+
+    public unsafe bool IsClosed 
+    {
+        get 
+        {
+            lock (this)
+            {
+                return NativePtr is not null && NativePtr->IsClosed();
+            }
+        }
+    }
 
     private unsafe QuicheConnection(Conn* nativePtr, Socket socket, EndPoint remoteEndPoint, ReadOnlyMemory<byte> initialData, ReadOnlyMemory<byte> connectionId)
     {
@@ -129,10 +141,12 @@ public class QuicheConnection : IDisposable
         if (initialData.IsEmpty)
         {
             listenTask = Task.Run(() => ListenAsync(cts.Token));
+            shouldCloseSocket = true;
         }
         else
         {
             recvQueue.Enqueue(initialData);
+            shouldCloseSocket = false;
         }
     }
 
@@ -387,17 +401,14 @@ public class QuicheConnection : IDisposable
 
     private async Task ListenAsync(CancellationToken cancellationToken)
     {
-        using (socket)
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
-                SocketReceiveFromResult result = await socket.ReceiveFromAsync(
-                    packetBuf, remoteEndPoint, cancellationToken);
-                recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
-            }
+            byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+            SocketReceiveFromResult result = await socket.ReceiveFromAsync(
+                packetBuf, remoteEndPoint, cancellationToken);
+            recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
         }
     }
 
@@ -418,7 +429,7 @@ public class QuicheConnection : IDisposable
     protected unsafe virtual void Dispose(bool disposing)
     {
         bool isNativeHandleValid;
-        lock (this) 
+        lock (this)
         {
             isNativeHandleValid = NativePtr is not null;
         }
@@ -468,6 +479,11 @@ public class QuicheConnection : IDisposable
 
                     streamMap.Clear();
                     streamBag.Clear();
+
+                    if (shouldCloseSocket) 
+                    {
+                        socket.Dispose();
+                    }
                 }
             }
 
