@@ -219,7 +219,7 @@ public class QuicheConnection : IDisposable
                         fixed (byte* pktPtr = info.SendBuffer)
                         {
                             resultOrError = (long)NativePtr->Send(
-                                pktPtr, (nuint)packetBuf.Length,
+                                pktPtr, (nuint)resultOrError,
                                 (SendInfo*)Unsafe.AsPointer(ref sendInfo)
                                 );
                             QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
