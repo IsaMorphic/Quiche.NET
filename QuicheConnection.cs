@@ -104,6 +104,17 @@ public class QuicheConnection : IDisposable
 
     public Task ConnectionEstablished => establishedTcs.Task;
 
+    public unsafe bool IsClosed 
+    {
+        get 
+        {
+            lock (this)
+            {
+                return NativePtr is not null && NativePtr->IsClosed();
+            }
+        }
+    }
+
     private unsafe QuicheConnection(Conn* nativePtr, Socket socket, EndPoint remoteEndPoint, ReadOnlyMemory<byte> initialData, ReadOnlyMemory<byte> connectionId)
     {
         NativePtr = nativePtr;
