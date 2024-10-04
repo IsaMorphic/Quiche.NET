@@ -194,17 +194,24 @@ public class QuicheConnection : IDisposable
                             (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted) &&
                             sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
                         {
-                            fixed (byte* bufPtr = pair.buf)
+                            if (NativePtr->StreamWritableNext() == pair.streamId)
                             {
-                                long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                QuicheStream stream = GetStream(pair.streamId);
-                                resultOrError = NativePtr->StreamSend(
-                                    (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
-                                    !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
-                                    );
-                                QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                                fixed (byte* bufPtr = pair.buf)
+                                {
+                                    long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                    QuicheStream stream = GetStream(pair.streamId);
+                                    resultOrError = NativePtr->StreamSend(
+                                        (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
+                                        !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                        );
+                                    QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                                }
+                                pair.buf.AsSpan(0, (int)resultOrError).CopyTo(info.SendBuffer.AsSpan());
                             }
-                            pair.buf.AsSpan(0, (int)resultOrError).CopyTo(info.SendBuffer.AsSpan());
+                            else 
+                            {
+                                sendQueue.Enqueue(pair);
+                            }
                         }
                     }
                 }
