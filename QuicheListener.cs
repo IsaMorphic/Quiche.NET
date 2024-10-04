@@ -34,10 +34,15 @@ public class QuicheListener : IDisposable
             {
                 connection.recvQueue.Enqueue(receivedBytes);
             }
-            else if (connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
+            else 
             {
                 QuicheConnection conn = QuicheConnection.Accept(socket, recvResult.RemoteEndPoint, receivedBytes, config);
                 connMap.TryAdd(recvResult.RemoteEndPoint, conn);
+
+                if (!connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
+                {
+                    connBag.Add(tcs = new());
+                }
                 tcs.TrySetResult(conn);
             }
         }
@@ -45,8 +50,11 @@ public class QuicheListener : IDisposable
 
     public async Task<QuicheConnection> AcceptAsync(CancellationToken cancellationToken)
     {
-        TaskCompletionSource<QuicheConnection> tcs = new(); connBag.Add(tcs);
-        return await tcs.Task.WaitAsync(cancellationToken);;
+        if (!connBag.TryPeek(out TaskCompletionSource<QuicheConnection>? tcs)) 
+        {
+            connBag.Add(tcs = new());
+        }
+        return await tcs.Task.WaitAsync(cancellationToken);
     }
 
 
