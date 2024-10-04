@@ -23,7 +23,7 @@ namespace Quiche.NET
             {
                 lock (conn)
                 {
-                    return conn.NativePtr->StreamReadable((ulong)streamId);
+                    return !conn.NativePtr->IsClosed();
                 }
             }
         }
