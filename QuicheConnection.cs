@@ -475,6 +475,9 @@ public class QuicheConnection : IDisposable
                         }
                     }
                 }
+                catch (QuicheException ex) 
+                when(ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+                { }
                 finally
                 {
                     cts.Dispose();
@@ -485,7 +488,7 @@ public class QuicheConnection : IDisposable
                     streamMap.Clear();
                     streamBag.Clear();
 
-                    if (shouldCloseSocket) 
+                    if (shouldCloseSocket)
                     {
                         socket.Dispose();
                     }

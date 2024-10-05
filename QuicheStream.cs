@@ -78,8 +78,9 @@ namespace Quiche.NET
                 {
                     flushCompleteFlag = flushResult.IsCompleted;
                     if (finished) { recvPipe.Writer.Complete(); }
-                    readResetEvent.Set();
                 }
+
+                readResetEvent.Set();
             }
         }
 
