@@ -344,7 +344,7 @@ public class QuicheConnection : IDisposable
 
                     await Task.Yield();
 
-                    if (streamIdOrNone >= 0)
+                    while (streamIdOrNone >= 0)
                     {
                         long recvCount;
                         bool streamFinished = false;
