@@ -111,9 +111,12 @@ namespace Quiche.NET
                     int bytesRead = recvStream.Read(buffer, offset, count);
                     while (!flushCompleteFlag && bytesRead < count)
                     {
-                        readResetEvent.Reset();
                         readResetEvent.Wait();
-                        bytesRead += recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
+
+                        int justRead = recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
+                        bytesRead += justRead;
+
+                        if (justRead == 0) { readResetEvent.Reset(); }
                     }
 
                     return bytesRead;
