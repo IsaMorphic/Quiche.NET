@@ -198,7 +198,7 @@ public class QuicheConnection : IDisposable
                             sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
                         {
                             long bytesSent = 0;
-                            while (resultOrError > 0 && bytesSent < pair.buf.Length)
+                            while (bytesSent < pair.buf.Length)
                             {
                                 fixed (byte* bufPtr = pair.buf)
                                 {
@@ -208,7 +208,9 @@ public class QuicheConnection : IDisposable
                                         (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
                                         !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
-                                    QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+
+                                    QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                                    if(resultOrError <= 0) break;
                                     bytesSent += resultOrError;
                                 }
                             }
