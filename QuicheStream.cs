@@ -115,11 +115,9 @@ namespace Quiche.NET
                 {
                     readResetEvent.Wait();
 
-                    int justRead;
                     lock (recvPipe)
                     {
-                        justRead = recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
-                        bytesRead += justRead;
+                        bytesRead += recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
                         readResetEvent.Reset();
                     }
                 }
