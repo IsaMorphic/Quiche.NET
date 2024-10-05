@@ -443,11 +443,6 @@ public class QuicheConnection : IDisposable
         {
             if (disposing)
             {
-                foreach (var (_, stream) in streamMap)
-                {
-                    stream.Dispose();
-                }
-
                 try
                 {
                     cts.Cancel();
@@ -461,6 +456,11 @@ public class QuicheConnection : IDisposable
                     x is QuicheException q && q.ErrorCode == QuicheError.QUICHE_ERR_DONE
                     ))
                 { }
+
+                foreach (var (_, stream) in streamMap)
+                {
+                    stream.Dispose();
+                }
 
                 try
                 {
