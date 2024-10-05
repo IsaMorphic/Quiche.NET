@@ -442,11 +442,12 @@ public class QuicheConnection : IDisposable
     {
         lock (this)
         {
-            long streamId = 0;
-
-            while (NativePtr->StreamReadable((ulong)streamId) || streamMap.ContainsKey(streamId)) 
-            { ++streamId; }
-
+            long streamId;
+            do
+            {
+                streamId = BitConverter.ToInt64(RandomNumberGenerator.GetBytes(sizeof(long)));
+            }
+            while (NativePtr->StreamReadable((ulong)streamId));
             return GetStream(streamId, false);
         }
     }
