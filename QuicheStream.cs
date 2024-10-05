@@ -105,24 +105,10 @@ namespace Quiche.NET
             }
             else
             {
-                int bytesRead;
                 lock (recvPipe)
                 {
-                    bytesRead = recvStream.Read(buffer, offset, count);
+                    return recvStream.Read(buffer, offset, count);
                 }
-
-                while (!flushCompleteFlag && bytesRead < count)
-                {
-                    readResetEvent.Wait();
-
-                    lock (recvPipe)
-                    {
-                        bytesRead += recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
-                        readResetEvent.Reset();
-                    }
-                }
-
-                return bytesRead;
             }
         }
 

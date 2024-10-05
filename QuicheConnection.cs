@@ -344,10 +344,10 @@ public class QuicheConnection : IDisposable
 
                     await Task.Yield();
 
-                    while (streamIdOrNone >= 0)
+                    long recvCount;
+                    bool streamFinished = false;
+                    while (streamIdOrNone >= 0 && !streamFinished)
                     {
-                        long recvCount;
-                        bool streamFinished = false;
                         unsafe
                         {
                             lock (this)
