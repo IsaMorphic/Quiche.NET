@@ -104,9 +104,9 @@ public class QuicheConnection : IDisposable
 
     public Task ConnectionEstablished => establishedTcs.Task;
 
-    public unsafe bool IsClosed 
+    public unsafe bool IsClosed
     {
-        get 
+        get
         {
             lock (this)
             {
@@ -331,9 +331,9 @@ public class QuicheConnection : IDisposable
 
                 await Task.Yield();
 
-                if (isConnEstablished && (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted))
+                long streamIdOrNone = 0;
+                while (isConnEstablished && streamIdOrNone >= 0 && (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted))
                 {
-                    long streamIdOrNone;
                     unsafe
                     {
                         lock (this)
@@ -342,11 +342,9 @@ public class QuicheConnection : IDisposable
                         }
                     }
 
-                    await Task.Yield();
-
                     long recvCount;
                     bool streamFinished = false;
-                    while (streamIdOrNone >= 0 && !streamFinished)
+                    while (!streamFinished)
                     {
                         unsafe
                         {
@@ -415,9 +413,9 @@ public class QuicheConnection : IDisposable
     private QuicheStream GetStream(long streamId, bool isPeerInitiated) =>
         streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
 
-    public QuicheStream GetStream() => 
-        GetStream(streamMap.Count == 0 ? 
-            0 : streamMap.Keys.Max() + 1, 
+    public QuicheStream GetStream() =>
+        GetStream(streamMap.Count == 0 ?
+            0 : streamMap.Keys.Max() + 1,
             false);
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
@@ -475,8 +473,8 @@ public class QuicheConnection : IDisposable
                         }
                     }
                 }
-                catch (QuicheException ex) 
-                when(ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+                catch (QuicheException ex)
+                when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
                 { }
                 finally
                 {
