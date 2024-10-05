@@ -368,8 +368,8 @@ public class QuicheConnection : IDisposable
                         }
                         tcs.TrySetResult(stream);
 
-                        await stream.ReceiveDataAsync(
-                            packetBuf.AsMemory(0, (int)recvCount),
+                        await stream.ReceiveDataAsync(recvCount == 0 ?
+                            Memory<byte>.Empty : packetBuf.AsMemory(0, (int)recvCount),
                             streamFinished, cancellationToken
                             );
                     }
