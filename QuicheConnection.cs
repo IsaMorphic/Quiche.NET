@@ -200,7 +200,7 @@ public class QuicheConnection : IDisposable
                             fixed (byte* bufPtr = pair.buf)
                             {
                                 long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                QuicheStream stream = GetStream(pair.streamId);
+                                QuicheStream stream = GetStream(pair.streamId, false);
                                 resultOrError = NativePtr->StreamSend(
                                     (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
                                     !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
@@ -361,7 +361,7 @@ public class QuicheConnection : IDisposable
                             }
                         }
 
-                        QuicheStream stream = GetStream(streamIdOrNone);
+                        QuicheStream stream = GetStream(streamIdOrNone, true);
                         if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                         {
                             streamBag.Add(tcs = new());
@@ -412,8 +412,13 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    public QuicheStream GetStream(long streamId) =>
-        streamMap.GetOrAdd(streamId, id => new(this, id));
+    private QuicheStream GetStream(long streamId, bool isPeerInitiated) =>
+        streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
+
+    public QuicheStream GetStream() => 
+        GetStream(streamMap.Count == 0 ? 
+            0 : streamMap.Keys.Max() + 1, 
+            false);
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
     {
