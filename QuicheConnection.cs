@@ -210,7 +210,7 @@ public class QuicheConnection : IDisposable
                                         );
 
                                     QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
-                                    if(resultOrError <= 0) break;
+                                    if (resultOrError <= 0) break;
                                     bytesSent += resultOrError;
                                 }
                             }
@@ -438,10 +438,18 @@ public class QuicheConnection : IDisposable
     private QuicheStream GetStream(long streamId, bool isPeerInitiated) =>
         streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
 
-    public QuicheStream GetStream() =>
-        GetStream(streamMap.Count == 0 ?
-            0 : streamMap.Keys.Max() + 1,
-            false);
+    public unsafe QuicheStream GetStream()
+    {
+        lock (this)
+        {
+            long streamId = 0;
+
+            while (NativePtr->StreamReadable((ulong)streamId)) 
+            { ++streamId; }
+
+            return GetStream(streamId, false);
+        }
+    }
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
     {
