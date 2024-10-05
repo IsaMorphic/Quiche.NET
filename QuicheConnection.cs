@@ -444,7 +444,7 @@ public class QuicheConnection : IDisposable
         {
             long streamId = 0;
 
-            while (NativePtr->StreamReadable((ulong)streamId)) 
+            while (NativePtr->StreamReadable((ulong)streamId) || streamMap.ContainsKey(streamId)) 
             { ++streamId; }
 
             return GetStream(streamId, false);
