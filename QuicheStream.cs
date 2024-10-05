@@ -17,10 +17,7 @@ namespace Quiche.NET
         private readonly QuicheConnection conn;
         private readonly long streamId;
 
-        private readonly ManualResetEventSlim readResetEvent;
-
-        private bool isPeerInitiated;
-        private bool flushCompleteFlag;
+        private readonly bool isPeerInitiated;
 
         public override bool CanRead => isPeerInitiated && !conn.IsClosed;
 
@@ -40,8 +37,6 @@ namespace Quiche.NET
         {
             this.conn = conn;
             this.streamId = streamId;
-
-            readResetEvent = new();
 
             if (isPeerInitiated)
             {
@@ -72,13 +67,13 @@ namespace Quiche.NET
                     recvPipe.Writer.Advance(bufIn.Length);
                 }
 
-                FlushResult flushResult = await recvPipe.Writer.FlushAsync(cancellationToken);
-
-                lock (recvPipe)
+                await recvPipe.Writer.FlushAsync(cancellationToken);
+                if (finished)
                 {
-                    flushCompleteFlag = flushResult.IsCompleted;
-                    if (finished) { recvPipe.Writer.Complete(); }
-                    readResetEvent.Set();
+                    lock (recvPipe)
+                    {
+                        recvPipe.Writer.Complete();
+                    }
                 }
             }
         }
