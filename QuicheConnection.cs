@@ -331,20 +331,20 @@ public class QuicheConnection : IDisposable
 
                 await Task.Yield();
 
-                long streamIdOrNone = 0;
+                long streamIdOrNone;
+                long recvCount = long.MaxValue;
+                bool streamFinished = false;
+                unsafe
+                {
+                    lock (this)
+                    {
+                        streamIdOrNone = NativePtr->StreamReadableNext();
+                    }
+                }
+
                 while (isConnEstablished && streamIdOrNone >= 0 && (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted))
                 {
-                    unsafe
-                    {
-                        lock (this)
-                        {
-                            streamIdOrNone = NativePtr->StreamReadableNext();
-                        }
-                    }
-
-                    long recvCount;
-                    bool streamFinished = false;
-                    while (!streamFinished)
+                    while (!streamFinished && recvCount > 0)
                     {
                         unsafe
                         {
@@ -366,10 +366,23 @@ public class QuicheConnection : IDisposable
                         }
                         tcs.TrySetResult(stream);
 
-                        await stream.ReceiveDataAsync(recvCount == 0 ?
-                            Memory<byte>.Empty : packetBuf.AsMemory(0, (int)recvCount),
-                            streamFinished, cancellationToken
-                            );
+                        if (recvCount > 0)
+                        {
+                            await stream.ReceiveDataAsync(
+                                packetBuf.AsMemory(0, (int)recvCount),
+                                streamFinished, cancellationToken
+                                );
+                        }
+                        else
+                        {
+                            unsafe
+                            {
+                                lock (this)
+                                {
+                                    streamIdOrNone = NativePtr->StreamReadableNext();
+                                }
+                            }
+                        }
                     }
                 }
             }
