@@ -188,17 +188,17 @@ public class QuicheConnection : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                long resultOrError;
+                long resultOrError = long.MaxValue;
                 unsafe
                 {
                     lock (this)
                     {
-                        while (NativePtr->IsEstablished() &&
+                        if (NativePtr->IsEstablished() &&
                             (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted) &&
                             sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
                         {
                             long bytesSent = 0;
-                            while (bytesSent < pair.buf.Length)
+                            while (resultOrError > 0 && bytesSent < pair.buf.Length)
                             {
                                 fixed (byte* bufPtr = pair.buf)
                                 {
@@ -211,6 +211,12 @@ public class QuicheConnection : IDisposable
                                     QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
                                     bytesSent += resultOrError;
                                 }
+                            }
+
+                            if (bytesSent < pair.buf.Length)
+                            {
+                                // requeue the data if it can't be sent right now!
+                                sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
                             }
                         }
                     }
