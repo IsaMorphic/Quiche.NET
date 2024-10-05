@@ -208,7 +208,7 @@ public class QuicheConnection : IDisposable
                                         (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
                                         !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
-                                    QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                                    QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                                     bytesSent += resultOrError;
                                 }
                             }
