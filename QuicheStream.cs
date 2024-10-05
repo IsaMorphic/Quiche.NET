@@ -14,12 +14,17 @@ namespace Quiche.NET
         private readonly Pipe? recvPipe, sendPipe;
         private readonly Stream? recvStream, sendStream;
 
-        private readonly long streamId;
         private readonly QuicheConnection conn;
+        private readonly long streamId;
 
-        public unsafe override bool CanRead => !conn.IsClosed;
+        private readonly ManualResetEventSlim readResetEvent;
 
-        public unsafe override bool CanWrite => !conn.IsClosed;
+        private bool isPeerInitiated;
+        private bool flushCompleteFlag;
+
+        public override bool CanRead => isPeerInitiated && !conn.IsClosed;
+
+        public override bool CanWrite => !isPeerInitiated && !conn.IsClosed;
 
         public override bool CanSeek => false;
 
@@ -31,25 +36,28 @@ namespace Quiche.NET
 
         public override long Length => throw new NotSupportedException();
 
-        internal QuicheStream(QuicheConnection conn, long streamId)
+        internal QuicheStream(QuicheConnection conn, long streamId, bool isPeerInitiated)
         {
             this.conn = conn;
             this.streamId = streamId;
 
-            if (CanRead)
+            readResetEvent = new();
+
+            if (isPeerInitiated)
             {
                 recvPipe = new Pipe();
-                recvStream = recvPipe.Reader.AsStream(true);
+                recvStream = recvPipe.Reader.AsStream();
+                this.isPeerInitiated = true;
             }
-
-            if (CanWrite)
+            else
             {
                 sendPipe = new Pipe();
-                sendStream = sendPipe.Writer.AsStream(true);
+                sendStream = sendPipe.Writer.AsStream();
+                this.isPeerInitiated = false;
             }
         }
 
-        internal ValueTask<FlushResult> ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
+        internal async Task ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
         {
             if (recvPipe is null)
             {
@@ -61,14 +69,15 @@ namespace Quiche.NET
             bufIn.CopyTo(memory);
             recvPipe.Writer.Advance(bufIn.Length);
 
-            // Make the data available to the PipeReader.
-            var flushTask = recvPipe.Writer.FlushAsync(cancellationToken);
+            FlushResult flushResult = await recvPipe.Writer.FlushAsync(cancellationToken);
+            flushCompleteFlag = flushResult.IsCompleted;
+
             if (finished)
             {
                 recvPipe.Writer.Complete();
             }
 
-            return flushTask;
+            readResetEvent.Set();
         }
 
         public override void Flush()
@@ -85,8 +94,25 @@ namespace Quiche.NET
             }
         }
 
-        public override int Read(byte[] buffer, int offset, int count) =>
-            recvStream?.Read(buffer, offset, count) ?? throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (recvStream is null)
+            {
+                throw new NotSupportedException();
+            }
+            else
+            {
+                int bytesRead = recvStream.Read(buffer, offset, count);
+                while (!flushCompleteFlag && bytesRead < count)
+                {
+                    readResetEvent.Reset();
+                    readResetEvent.Wait();
+                    bytesRead += recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
+                }
+
+                return bytesRead;
+            }
+        }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
@@ -97,9 +123,8 @@ namespace Quiche.NET
             else
             {
                 sendStream.Write(buffer, offset, count);
+                Flush();
             }
-
-            Flush();
         }
 
         public override long Seek(long offset, SeekOrigin origin) =>
