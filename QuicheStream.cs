@@ -120,9 +120,8 @@ namespace Quiche.NET
                     {
                         justRead = recvStream.Read(buffer, offset + bytesRead, count - bytesRead);
                         bytesRead += justRead;
+                        readResetEvent.Reset();
                     }
-
-                    readResetEvent.Reset();
                 }
 
                 return bytesRead;
