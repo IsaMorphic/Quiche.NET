@@ -354,16 +354,19 @@ public class QuicheConnection : IDisposable
 
                 QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
 
-                long streamIdOrNone;
-                unsafe
+                long streamIdOrNone = -1;
+                if (isConnEstablished)
                 {
-                    lock (this)
+                    unsafe
                     {
-                        streamIdOrNone = NativePtr->StreamReadableNext();
+                        lock (this)
+                        {
+                            streamIdOrNone = NativePtr->StreamReadableNext();
+                        }
                     }
                 }
 
-                while ((isConnEstablished || isInEarlyData) && streamIdOrNone >= 0)
+                while (streamIdOrNone >= 0)
                 {
                     bool streamFinished = false;
                     long recvCount = long.MaxValue;
