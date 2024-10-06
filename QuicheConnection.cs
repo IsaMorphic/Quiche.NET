@@ -504,7 +504,7 @@ public class QuicheConnection : IDisposable
         {
             streamId = BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 1;
         }
-        while (streamMap.ContainsKey(streamId));
+        while (IsStreamReadable(streamId));
         return GetStream(streamId);
     }
 
