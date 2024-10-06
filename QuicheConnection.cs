@@ -456,16 +456,16 @@ public class QuicheConnection : IDisposable
     {
         long streamId;
         bool wasReadable;
-        do
+        lock (this)
         {
-            streamId = BitConverter.ToInt64(RandomNumberGenerator.GetBytes(sizeof(long)));
-            lock (this)
+            do
             {
+                streamId = BitConverter.ToInt64(RandomNumberGenerator.GetBytes(sizeof(long)));
                 wasReadable = NativePtr->StreamReadable((ulong)streamId);
             }
+            while (streamMap.ContainsKey(streamId) || wasReadable);
+            return GetStream(streamId, false);
         }
-        while (streamMap.ContainsKey(streamId) || wasReadable);
-        return GetStream(streamId, false);
     }
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
