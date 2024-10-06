@@ -36,11 +36,17 @@ namespace Quiche.NET
             this.conn = conn;
             this.streamId = streamId;
 
-            recvPipe = new Pipe();
-            recvStream = recvPipe.Reader.AsStream();
+            if (CanRead)
+            {
+                recvPipe = new Pipe();
+                recvStream = recvPipe.Reader.AsStream();
+            }
 
-            sendPipe = new Pipe();
-            sendStream = sendPipe.Writer.AsStream();
+            if (CanWrite)
+            {
+                sendPipe = new Pipe();
+                sendStream = sendPipe.Writer.AsStream();
+            }
         }
 
         internal async Task ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
