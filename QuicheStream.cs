@@ -135,7 +135,7 @@ namespace Quiche.NET
                 if (CanRead)
                 {
                     QuicheException.ThrowIfError((QuicheError)
-                        conn.NativePtr->StreamShutdown((ulong)streamId,
+                        conn.NativePtr->StreamShutdown(streamId,
                         (int)Shutdown.Read, 0x00),
                         $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
                         );
@@ -144,7 +144,7 @@ namespace Quiche.NET
                 if (CanWrite)
                 {
                     QuicheException.ThrowIfError((QuicheError)
-                        conn.NativePtr->StreamShutdown((ulong)streamId,
+                        conn.NativePtr->StreamShutdown(streamId,
                         (int)Shutdown.Write, 0x00),
                         $"Failed to shutdown writing side of stream! (ID: {streamId:X16})"
                         );
