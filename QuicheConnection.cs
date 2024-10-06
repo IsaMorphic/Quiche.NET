@@ -386,7 +386,7 @@ public class QuicheConnection : IDisposable
                             fixed (byte* bufPtr = packetBuf)
                             {
                                 errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr + bytesRead, (nuint)(resultOrError - bytesRead),
+                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr + bytesRead, (nuint)(resultOrError - bytesRead),
                                     (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                             }
                         }
