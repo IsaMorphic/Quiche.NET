@@ -373,7 +373,7 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                if(streamIdOrNone < 0)
+                if (streamIdOrNone < 0)
                 {
                     await Task.Delay(75, cancellationToken);
                     continue;
@@ -394,21 +394,26 @@ public class QuicheConnection : IDisposable
                             fixed (byte* bufPtr = packetBuf)
                             {
                                 errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr + bytesRead, (nuint)resultOrError,
+                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr + bytesRead, (nuint)(resultOrError - bytesRead),
                                     (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                             }
                         }
                     }
 
-                    try
-                    {
-                        QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                    if (recvCount > 0) 
+                    { 
+                        bytesRead += recvCount; 
                     }
-                    catch (QuicheException ex)
-                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-                    { }
-
-                    if (recvCount > 0) bytesRead += recvCount;
+                    else
+                    {
+                        try
+                        {
+                            QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                        }
+                        catch (QuicheException ex)
+                        when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+                        { }
+                    }
                 }
 
                 QuicheStream stream = GetStream((ulong)streamIdOrNone, true);
