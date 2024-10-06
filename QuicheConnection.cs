@@ -493,9 +493,9 @@ public class QuicheConnection : IDisposable
         ulong streamIdx = 0;
         do
         {
-            streamId = (++streamIdx << 2) | (shouldCloseSocket ? 1UL : 0UL);
+            streamId = (streamIdx++ << 2) | (shouldCloseSocket ? 1UL : 0UL);
         }
-        while (streamId < 16 && streamMap.ContainsKey(streamId));
+        while (streamMap.ContainsKey(streamId));
         return GetStream(streamId);
     }
 
