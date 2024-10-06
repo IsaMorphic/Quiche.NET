@@ -455,16 +455,11 @@ public class QuicheConnection : IDisposable
     public unsafe QuicheStream GetStream()
     {
         long streamId;
-        bool wasReadable;
         do
         {
             streamId = BitConverter.ToInt64(RandomNumberGenerator.GetBytes(sizeof(long)));
-            lock (this)
-            {
-                wasReadable = NativePtr->StreamReadable((ulong)streamId);
-            }
         }
-        while (streamMap.ContainsKey(streamId) || wasReadable);
+        while (streamMap.ContainsKey(streamId));
         return GetStream(streamId, false);
     }
 
