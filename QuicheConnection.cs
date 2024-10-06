@@ -194,8 +194,7 @@ public class QuicheConnection : IDisposable
                 {
                     lock (this)
                     {
-                        isConnectionEstablished = NativePtr->IsEstablished() &&
-                            (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted);
+                        isConnectionEstablished = NativePtr->IsEstablished();
                         isInEarlyData = NativePtr->IsInEarlyData();
                     }
                 }
@@ -236,8 +235,6 @@ public class QuicheConnection : IDisposable
                     }
                     QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
                 }
-
-                await Task.Yield();
 
                 SendInfo sendInfo = default;
                 unsafe
