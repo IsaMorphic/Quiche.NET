@@ -402,25 +402,25 @@ public class QuicheConnection : IDisposable
                                 }
                             }
                         }
+                    }
 
-                        QuicheStream stream = GetStream(streamIdOrNone, true);
-                        if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                    QuicheStream stream = GetStream(streamIdOrNone, true);
+                    if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                    {
+                        streamBag.Add(tcs = new());
+                    }
+                    tcs.TrySetResult(stream);
+
+                    await stream.ReceiveDataAsync(
+                        packetBuf.AsMemory(0, (int)bytesRead),
+                        streamFinished, cancellationToken
+                        );
+
+                    unsafe
+                    {
+                        lock (this)
                         {
-                            streamBag.Add(tcs = new());
-                        }
-                        tcs.TrySetResult(stream);
-
-                        await stream.ReceiveDataAsync(
-                            packetBuf.AsMemory(0, (int)bytesRead),
-                            streamFinished, cancellationToken
-                            );
-
-                        unsafe
-                        {
-                            lock (this)
-                            {
-                                streamIdOrNone = NativePtr->StreamReadableNext();
-                            }
+                            streamIdOrNone = NativePtr->StreamReadableNext();
                         }
                     }
                 }
