@@ -467,10 +467,10 @@ public class QuicheConnection : IDisposable
 
     public unsafe QuicheStream GetStream()
     {
-        ulong streamId;
+        ulong streamId = 0;
         do
         {
-            streamId = BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 1;
+            ++streamId;
         }
         while (streamMap.ContainsKey(streamId));
         return GetStream(streamId, false);
