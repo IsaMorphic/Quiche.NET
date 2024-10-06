@@ -366,10 +366,10 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                bool streamFinished = false;
-                long recvCount = long.MaxValue;
                 while ((isConnEstablished || isInEarlyData) && streamIdOrNone >= 0)
                 {
+                    bool streamFinished = false;
+                    long recvCount = long.MaxValue;
                     while (!streamFinished && recvCount > 0)
                     {
                         unsafe
