@@ -219,7 +219,7 @@ public class QuicheConnection : IDisposable
                                     errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                                     resultOrError = (long)NativePtr->StreamSend(
                                         (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
-                                        IsClosed, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                        !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
                                 }
                             }
@@ -417,10 +417,11 @@ public class QuicheConnection : IDisposable
                 }
 
                 QuicheStream stream = GetStream((ulong)streamIdOrNone);
-                if (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
-                    tcs.TrySetResult(stream);
+                    streamBag.Add(tcs = new());
                 }
+                tcs.TrySetResult(stream);
 
                 await stream.ReceiveDataAsync(
                     packetBuf.AsMemory(0, (int)bytesRead),
@@ -486,10 +487,10 @@ public class QuicheConnection : IDisposable
         try
         {
             QuicheException.ThrowIfError((QuicheError)resultOrError);
-            return resultOrError != 0;
+            return resultOrError == 0;
         }
         catch (QuicheException ex)
-        when (ex.ErrorCode == QuicheError.QUICHE_ERR_INVALID_STREAM_STATE)
+        when (ex.ErrorCode == QuicheError.QUICHE_ERR_INVALID_STREAM_STATE) 
         {
             return true;
         }
@@ -504,13 +505,16 @@ public class QuicheConnection : IDisposable
         {
             streamId = BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 1;
         }
-        while (IsStreamReadable(streamId));
+        while (streamMap.ContainsKey(streamId));
         return GetStream(streamId);
     }
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
     {
-        TaskCompletionSource<QuicheStream> tcs = new(); streamBag.Add(tcs);
+        if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+        {
+            streamBag.Add(tcs = new());
+        }
         return await tcs.Task.WaitAsync(cancellationToken);
     }
 
