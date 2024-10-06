@@ -361,82 +361,87 @@ public class QuicheConnection : IDisposable
 
                 QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
 
-                foreach (ulong streamId in GetAllReadableStreamIds())
+                long streamIdOrNone = -1;
+                unsafe
                 {
-                    if (!IsStreamReadable(streamId)) continue;
-
-                    bool streamFinished = false;
-
-                    long bytesRead = 0;
-                    long recvCount = long.MaxValue;
-
-                    while (!streamFinished && recvCount > 0)
+                    lock (this)
                     {
-                        long errorCode;
-                        unsafe
-                        {
-                            lock (this)
-                            {
-                                fixed (byte* bufPtr = packetBuf)
-                                {
-                                    errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                    recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr + bytesRead, (nuint)(resultOrError - bytesRead),
-                                        (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
-                                }
-                            }
-                        }
-
-                        if (recvCount > 0)
-                        {
-                            bytesRead += recvCount;
-                        }
-                        else
-                        {
-                            try
-                            {
-                                QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
-                            }
-                            catch (QuicheException ex)
-                            when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-                            { }
-                        }
+                        streamIdOrNone = NativePtr->StreamReadableNext();
                     }
-
-                    QuicheStream stream = GetStream(streamId);
-                    if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                    {
-                        streamBag.Add(tcs = new());
-                    }
-                    tcs.TrySetResult(stream);
-
-                    await stream.ReceiveDataAsync(
-                        packetBuf.AsMemory(0, (int)bytesRead),
-                        streamFinished, cancellationToken
-                        );
                 }
+                if(streamIdOrNone < 0) continue;
+
+                bool streamFinished = false;
+
+                long bytesRead = 0;
+                long recvCount = long.MaxValue;
+
+                while (!streamFinished && recvCount > 0)
+                {
+                    long errorCode;
+                    unsafe
+                    {
+                        lock (this)
+                        {
+                            fixed (byte* bufPtr = packetBuf)
+                            {
+                                errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr + bytesRead, (nuint)(resultOrError - bytesRead),
+                                    (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
+                            }
+                        }
+                    }
+
+                    if (recvCount > 0)
+                    {
+                        bytesRead += recvCount;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                        }
+                        catch (QuicheException ex)
+                        when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+                        { }
+                    }
+                }
+
+                QuicheStream stream = GetStream((ulong)streamIdOrNone);
+                if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    streamBag.Add(tcs = new());
+                }
+                tcs.TrySetResult(stream);
+
+                await stream.ReceiveDataAsync(
+                    packetBuf.AsMemory(0, (int)bytesRead),
+                    streamFinished, cancellationToken
+                    );
             }
             catch (QuicheException ex) when
                 (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             { await Task.Delay(75, cancellationToken); continue; }
             catch (QuicheException ex)
             {
-                establishedTcs.TrySetException(ex);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetException(ex);
-                }
-                throw;
+            establishedTcs.TrySetException(ex);
+            while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+            {
+                tcs.TrySetException(ex);
             }
+            throw;
+        }
             catch (OperationCanceledException)
             {
-                establishedTcs.TrySetCanceled(cts.Token);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetCanceled(cts.Token);
-                }
-                throw;
+            establishedTcs.TrySetCanceled(cts.Token);
+            while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+            {
+                tcs.TrySetCanceled(cts.Token);
             }
+            throw;
         }
+    }
     }
 
     private async Task ListenAsync(CancellationToken cancellationToken)
@@ -450,21 +455,6 @@ public class QuicheConnection : IDisposable
                 packetBuf, remoteEndPoint, cancellationToken);
             recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
         }
-    }
-
-    private unsafe ulong[] GetAllReadableStreamIds()
-    {
-        List<ulong> streamIds = new();
-        StreamIter* iter = NativePtr->Readable();
-
-        ulong streamId = 0;
-        while (iter->Next((ulong*)Unsafe.AsPointer(ref streamId)))
-        {
-            streamIds.Add(streamId);
-        }
-
-        iter->Free();
-        return streamIds.ToArray();
     }
 
     private QuicheStream GetStream(ulong streamId) =>
@@ -502,7 +492,9 @@ public class QuicheConnection : IDisposable
         ulong streamId;
         do
         {
-            streamId = BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 1;
+            streamId = (BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 4) << 2;
+            streamId |= shouldCloseSocket ? 1UL : 0UL; // signify client or server
+            streamId |= 2UL; // signify unidirectional stream, always
         }
         while (streamMap.ContainsKey(streamId));
         return GetStream(streamId);
