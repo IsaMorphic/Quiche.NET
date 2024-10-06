@@ -232,11 +232,6 @@ public class QuicheConnection : IDisposable
                     {
                         // requeue the data if it can't be sent right now!
                         sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
-                        QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
-                    if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
-                    {
-                        // requeue the data if it can't be sent right now!
-                        sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
                     }
 
                     try
