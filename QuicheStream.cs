@@ -15,7 +15,7 @@ namespace Quiche.NET
         private readonly Stream? recvStream, sendStream;
 
         private readonly QuicheConnection conn;
-        private readonly long streamId;
+        private readonly ulong streamId;
 
         private readonly bool isPeerInitiated;
 
@@ -33,7 +33,7 @@ namespace Quiche.NET
 
         public override long Length => throw new NotSupportedException();
 
-        internal QuicheStream(QuicheConnection conn, long streamId, bool isPeerInitiated)
+        internal QuicheStream(QuicheConnection conn, ulong streamId, bool isPeerInitiated)
         {
             this.conn = conn;
             this.streamId = streamId;

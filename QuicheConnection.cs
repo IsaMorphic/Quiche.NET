@@ -87,14 +87,14 @@ public class QuicheConnection : IDisposable
     private readonly CancellationTokenSource cts;
 
     private readonly TaskCompletionSource establishedTcs;
-    private readonly ConcurrentDictionary<long, QuicheStream> streamMap;
+    private readonly ConcurrentDictionary<ulong, QuicheStream> streamMap;
     private readonly ConcurrentBag<TaskCompletionSource<QuicheStream>> streamBag;
 
     private readonly Socket socket;
     private readonly EndPoint remoteEndPoint;
     private readonly bool shouldCloseSocket;
 
-    internal readonly ConcurrentQueue<(long, byte[])> sendQueue;
+    internal readonly ConcurrentQueue<(ulong, byte[])> sendQueue;
     internal readonly ConcurrentQueue<ReadOnlyMemory<byte>> recvQueue;
 
     private readonly byte[] connectionId;
@@ -200,7 +200,7 @@ public class QuicheConnection : IDisposable
                 }
 
                 if ((isConnectionEstablished || isInEarlyData) && sendQueue
-                    .TryDequeue(out (long streamId, byte[] buf) pair))
+                    .TryDequeue(out (ulong streamId, byte[] buf) pair))
                 {
                     long errorCode;
 
@@ -403,7 +403,7 @@ public class QuicheConnection : IDisposable
                         }
                     }
 
-                    QuicheStream stream = GetStream(streamIdOrNone, true);
+                    QuicheStream stream = GetStream((ulong)streamIdOrNone, true);
                     if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                     {
                         streamBag.Add(tcs = new());
@@ -461,15 +461,15 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    private QuicheStream GetStream(long streamId, bool isPeerInitiated) =>
+    private QuicheStream GetStream(ulong streamId, bool isPeerInitiated) =>
         streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
 
     public unsafe QuicheStream GetStream()
     {
-        long streamId;
+        ulong streamId;
         do
         {
-            streamId = BitConverter.ToInt64(RandomNumberGenerator.GetBytes(sizeof(long)));
+            streamId = BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 1;
         }
         while (streamMap.ContainsKey(streamId));
         return GetStream(streamId, false);
