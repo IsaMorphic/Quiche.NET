@@ -375,10 +375,9 @@ public class QuicheConnection : IDisposable
 
                 while (streamIdOrNone >= 0)
                 {
-                    bool streamFinished = false;
-
                     long bytesRead = 0;
                     long recvCount = long.MaxValue;
+                    bool streamFinished = false;
                     while (!streamFinished && recvCount > 0)
                     {
                         unsafe
