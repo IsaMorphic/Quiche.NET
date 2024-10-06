@@ -545,8 +545,11 @@ public class QuicheConnection : IDisposable
 
             lock (this)
             {
-                NativePtr->Free();
-                NativePtr = null;
+                if (NativePtr is not null)
+                {
+                    NativePtr->Free();
+                    NativePtr = null;
+                }
             }
         }
 
