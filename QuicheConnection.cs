@@ -189,39 +189,52 @@ public class QuicheConnection : IDisposable
             try
             {
                 long resultOrError = long.MaxValue;
+                bool isConnectionEstablished, isInEarlyData;
                 unsafe
                 {
                     lock (this)
                     {
-                        if (NativePtr->IsEstablished() &&
-                            (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted) &&
-                            sendQueue.TryDequeue(out (long streamId, byte[] buf) pair))
+                        isConnectionEstablished = NativePtr->IsEstablished() &&
+                            (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted);
+                        isInEarlyData = NativePtr->IsInEarlyData();
+                    }
+                }
+
+                if ((isConnectionEstablished || isInEarlyData) && sendQueue
+                    .TryDequeue(out (long streamId, byte[] buf) pair))
+                {
+                    long errorCode;
+
+                    long bytesSent = 0;
+                    Lazy<bool> hasNotSentAllBytes;
+
+                    QuicheStream stream = GetStream(pair.streamId, false);
+                    do
+                    {
+                        unsafe
                         {
-                            long bytesSent = 0;
-                            while (bytesSent < pair.buf.Length)
+                            lock (this)
                             {
                                 fixed (byte* bufPtr = pair.buf)
                                 {
-                                    long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                    QuicheStream stream = GetStream(pair.streamId, false);
+                                    errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                                     resultOrError = (long)NativePtr->StreamSend(
                                         (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
                                         !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
-
-                                    QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
-                                    if (resultOrError <= 0) break;
-                                    bytesSent += resultOrError;
                                 }
                             }
-
-                            if (bytesSent < pair.buf.Length)
-                            {
-                                // requeue the data if it can't be sent right now!
-                                sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
-                            }
                         }
+
+                        hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < pair.buf.Length);
+                    } while (resultOrError >= 0 && hasNotSentAllBytes.Value);
+
+                    if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
+                    {
+                        // requeue the data if it can't be sent right now!
+                        sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
                     }
+                    QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
                 }
 
                 await Task.Yield();
@@ -237,10 +250,10 @@ public class QuicheConnection : IDisposable
                                 pktPtr, (nuint)info.SendBuffer.Length,
                                 (SendInfo*)Unsafe.AsPointer(ref sendInfo)
                                 );
-                            QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                         }
                     }
                 }
+                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
 
                 lock (info)
                 {
