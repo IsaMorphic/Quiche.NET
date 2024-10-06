@@ -226,19 +226,26 @@ public class QuicheConnection : IDisposable
                         }
 
                         hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < pair.buf.Length);
-                    } while (resultOrError > 0 && hasNotSentAllBytes.Value);
+                    } while (resultOrError >= 0 && hasNotSentAllBytes.Value);
+
+                    if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
+                    {
+                        // requeue the data if it can't be sent right now!
+                        sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
+                        QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                    if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
+                    {
+                        // requeue the data if it can't be sent right now!
+                        sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
+                    }
 
                     try
                     {
                         QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
-                        if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
-                        {
-                            // requeue the data if it can't be sent right now!
-                            sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
-                        }
                     }
                     catch (QuicheException ex)
-                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE) { }
+                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE) 
+                    { }
                 }
 
                 SendInfo sendInfo = default;
