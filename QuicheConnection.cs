@@ -390,14 +390,15 @@ public class QuicheConnection : IDisposable
                                     recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr + bytesRead, (nuint)resultOrError,
                                         (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
 
-                                    if (recvCount < 0)
+                                    try
                                     {
                                         QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
                                     }
-                                    else
-                                    {
-                                        bytesRead += recvCount;
-                                    }
+                                    catch (QuicheException ex)
+                                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+                                    { }
+
+                                    if (recvCount > 0) bytesRead += recvCount;
                                 }
                             }
                         }
