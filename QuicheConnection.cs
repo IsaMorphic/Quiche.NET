@@ -217,8 +217,8 @@ public class QuicheConnection : IDisposable
                                 fixed (byte* bufPtr = pair.buf)
                                 {
                                     errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                    resultOrError = (long)NativePtr->StreamSend(
-                                        (ulong)pair.streamId, bufPtr, (nuint)pair.buf.Length,
+                                    resultOrError = (long)NativePtr->StreamSend(pair.streamId, 
+                                        bufPtr, (nuint)pair.buf.Length,
                                         !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
                                 }
