@@ -207,7 +207,7 @@ public class QuicheConnection : IDisposable
                     long bytesSent = 0;
                     Lazy<bool> hasNotSentAllBytes;
 
-                    QuicheStream stream = GetStream(pair.streamId, false);
+                    QuicheStream stream = GetStream(pair.streamId);
                     do
                     {
                         unsafe
@@ -400,9 +400,9 @@ public class QuicheConnection : IDisposable
                         }
                     }
 
-                    if (recvCount > 0) 
-                    { 
-                        bytesRead += recvCount; 
+                    if (recvCount > 0)
+                    {
+                        bytesRead += recvCount;
                     }
                     else
                     {
@@ -465,10 +465,30 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    private QuicheStream GetStream(ulong streamId, bool isPeerInitiated) =>
-        streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
+    private QuicheStream GetStream(ulong streamId) =>
+        streamMap.GetOrAdd(streamId, id => new(this, id));
 
-    public unsafe QuicheStream GetStream()
+    internal unsafe bool IsStreamReadable(ulong streamId)
+    {
+        lock (this)
+        {
+            return NativePtr->StreamReadable(streamId);
+        }
+    }
+
+    internal unsafe bool IsStreamWritable(ulong streamId)
+    {
+        long resultOrError;
+        lock (this)
+        {
+            resultOrError = NativePtr->StreamWritable(streamId, 0);
+        }
+
+        QuicheException.ThrowIfError((QuicheError)resultOrError);
+        return resultOrError == 0;
+    }
+
+    public QuicheStream GetUnusedLocalStream()
     {
         ulong streamId;
         do
@@ -476,7 +496,7 @@ public class QuicheConnection : IDisposable
             streamId = BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 1;
         }
         while (streamMap.ContainsKey(streamId));
-        return GetStream(streamId, false);
+        return GetStream(streamId);
     }
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
