@@ -417,11 +417,10 @@ public class QuicheConnection : IDisposable
                 }
 
                 QuicheStream stream = GetStream((ulong)streamIdOrNone);
-                if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                if (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
-                    streamBag.Add(tcs = new());
+                    tcs.TrySetResult(stream);
                 }
-                tcs.TrySetResult(stream);
 
                 await stream.ReceiveDataAsync(
                     packetBuf.AsMemory(0, (int)bytesRead),
@@ -490,7 +489,7 @@ public class QuicheConnection : IDisposable
             return resultOrError != 0;
         }
         catch (QuicheException ex)
-        when (ex.ErrorCode == QuicheError.QUICHE_ERR_INVALID_STREAM_STATE) 
+        when (ex.ErrorCode == QuicheError.QUICHE_ERR_INVALID_STREAM_STATE)
         {
             return true;
         }
@@ -511,10 +510,7 @@ public class QuicheConnection : IDisposable
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
     {
-        if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-        {
-            streamBag.Add(tcs = new());
-        }
+        TaskCompletionSource<QuicheStream> tcs = new(); streamBag.Add(tcs);
         return await tcs.Task.WaitAsync(cancellationToken);
     }
 
