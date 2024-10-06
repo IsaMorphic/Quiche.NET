@@ -299,28 +299,32 @@ public class QuicheConnection : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
+                bool isConnEstablished, isInEarlyData;
+                unsafe
+                {
+                    lock (this)
+                    {
+                        NativePtr->OnTimeout();
+
+                        isConnEstablished = NativePtr->IsEstablished();
+                        isInEarlyData = NativePtr->IsInEarlyData();
+                    }
+                }
+
+                if (isConnEstablished)
+                {
+                    establishedTcs.TrySetResult();
+                }
+
                 ReadOnlyMemory<byte> nextPacket;
                 if (!recvQueue.TryDequeue(out nextPacket))
                 {
-                    unsafe
-                    {
-                        lock (this)
-                        {
-                            NativePtr->OnTimeout();
-                            if (NativePtr->IsEstablished())
-                            {
-                                establishedTcs.TrySetResult();
-                            }
-                        }
-                    }
-
                     await Task.Delay(75, cancellationToken);
                     continue;
                 }
                 nextPacket.CopyTo(packetBuf);
 
                 long resultOrError;
-                bool isConnEstablished;
                 unsafe
                 {
                     lock (this)
@@ -346,19 +350,14 @@ public class QuicheConnection : IDisposable
                                     bufPtr, (nuint)nextPacket.Length,
                                     (RecvInfo*)Unsafe.AsPointer(ref recvInfo)
                                     );
-                                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                             }
                         }
-
-                        isConnEstablished = NativePtr->IsEstablished();
                     }
                 }
 
-                await Task.Yield();
+                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
 
                 long streamIdOrNone;
-                long recvCount = long.MaxValue;
-                bool streamFinished = false;
                 unsafe
                 {
                     lock (this)
@@ -367,7 +366,9 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                while (isConnEstablished && streamIdOrNone >= 0 && (establishedTcs.TrySetResult() || ConnectionEstablished.IsCompleted))
+                bool streamFinished = false;
+                long recvCount = long.MaxValue;
+                while ((isConnEstablished || isInEarlyData) && streamIdOrNone >= 0)
                 {
                     while (!streamFinished && recvCount > 0)
                     {
