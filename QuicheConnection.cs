@@ -494,7 +494,6 @@ public class QuicheConnection : IDisposable
         {
             streamId = (BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 4) << 2;
             streamId |= shouldCloseSocket ? 1UL : 0UL; // signify client or server
-            streamId |= 2UL; // signify unidirectional stream, always
         }
         while (streamMap.ContainsKey(streamId));
         return GetStream(streamId);
