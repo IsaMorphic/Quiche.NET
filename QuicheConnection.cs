@@ -484,8 +484,18 @@ public class QuicheConnection : IDisposable
             resultOrError = NativePtr->StreamWritable(streamId, 0);
         }
 
-        QuicheException.ThrowIfError((QuicheError)resultOrError);
-        return resultOrError == 0;
+        try
+        {
+            QuicheException.ThrowIfError((QuicheError)resultOrError);
+            return resultOrError != 0;
+        }
+        catch (QuicheException ex)
+        when (ex.ErrorCode == QuicheError.QUICHE_ERR_INVALID_STREAM_STATE) 
+        {
+            return true;
+        }
+
+        return false;
     }
 
     public QuicheStream GetUnusedLocalStream()
