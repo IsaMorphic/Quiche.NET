@@ -416,7 +416,7 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                QuicheStream stream = GetStream((ulong)streamIdOrNone, true);
+                QuicheStream stream = GetStream((ulong)streamIdOrNone);
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
                     streamBag.Add(tcs = new());
