@@ -239,7 +239,7 @@ public class QuicheConnection : IDisposable
                         QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
                     }
                     catch (QuicheException ex)
-                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE) 
+                    when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
                     { }
                 }
 
@@ -376,6 +376,8 @@ public class QuicheConnection : IDisposable
                 while (streamIdOrNone >= 0)
                 {
                     bool streamFinished = false;
+
+                    long bytesRead = 0;
                     long recvCount = long.MaxValue;
                     while (!streamFinished && recvCount > 0)
                     {
@@ -385,9 +387,18 @@ public class QuicheConnection : IDisposable
                             {
                                 fixed (byte* bufPtr = packetBuf)
                                 {
-                                    recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr, (nuint)resultOrError,
-                                        (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref resultOrError));
-                                    QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+                                    long errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                    recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr + bytesRead, (nuint)resultOrError,
+                                        (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
+
+                                    if (recvCount < 0)
+                                    {
+                                        QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                                    }
+                                    else
+                                    {
+                                        bytesRead += recvCount;
+                                    }
                                 }
                             }
                         }
@@ -399,21 +410,16 @@ public class QuicheConnection : IDisposable
                         }
                         tcs.TrySetResult(stream);
 
-                        if (recvCount > 0 && stream.CanRead)
+                        await stream.ReceiveDataAsync(
+                            packetBuf.AsMemory(0, (int)bytesRead),
+                            streamFinished, cancellationToken
+                            );
+
+                        unsafe
                         {
-                            await stream.ReceiveDataAsync(
-                                packetBuf.AsMemory(0, (int)recvCount),
-                                streamFinished, cancellationToken
-                                );
-                        }
-                        else
-                        {
-                            unsafe
+                            lock (this)
                             {
-                                lock (this)
-                                {
-                                    streamIdOrNone = NativePtr->StreamReadableNext();
-                                }
+                                streamIdOrNone = NativePtr->StreamReadableNext();
                             }
                         }
                     }
