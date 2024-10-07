@@ -483,7 +483,7 @@ public class QuicheConnection : IDisposable
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (shouldCloseSocket ? 0x2UL : 0x3UL);
+            streamId = (streamIdx++ << 2) | (shouldCloseSocket ? 0x3UL : 0x2UL);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
