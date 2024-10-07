@@ -365,6 +365,7 @@ public class QuicheConnection : IDisposable
                         lock (this)
                         {
                             streamIdOrNone = NativePtr->StreamReadableNext();
+                            Console.WriteLine($"STREAM ID: {streamIdOrNone}");
                             if (streamIdOrNone < 0) { continue; }
                         }
                     }
