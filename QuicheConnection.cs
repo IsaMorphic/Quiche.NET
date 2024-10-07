@@ -479,20 +479,11 @@ public class QuicheConnection : IDisposable
 
     public async Task<QuicheStream> OpenStreamAsync(CancellationToken cancellationToken)
     {
-        ulong streamId;
-        byte[] rand;
+        ulong streamId, streamIdx = 0;
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
-            rand = RandomNumberGenerator.GetBytes(sizeof(ulong));
-            streamId = 
-                // 62-bit unidirectional stream ID; both MSBs are always zero
-                (BitConverter.ToUInt64(rand) & 0x3FFFFFFFFFFFFFFCUL) | 
-                // set LSB if we're the server, next LSB is 
-                // always set to mark stream as unidirectional
-                (shouldCloseSocket ? 0x2UL : 0x3UL); 
-
+            streamId = (streamIdx++ << 2) | (shouldCloseSocket ? 0x2UL : 0x3UL);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
@@ -502,7 +493,6 @@ public class QuicheConnection : IDisposable
                 break;
             }
         } while (!cancellationToken.IsCancellationRequested);
-
         return GetStream(streamId, false);
     }
 
