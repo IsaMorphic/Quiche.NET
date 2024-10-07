@@ -17,9 +17,11 @@ namespace Quiche.NET
         private readonly QuicheConnection conn;
         private readonly ulong streamId;
 
-        public override bool CanRead => conn.IsStreamReadable(streamId);
+        private readonly bool isPeerInitiated;
 
-        public override bool CanWrite => conn.IsStreamWritable(streamId);
+        public override bool CanRead => isPeerInitiated && !conn.IsClosed;
+
+        public override bool CanWrite => !isPeerInitiated && !conn.IsClosed;
 
         public override bool CanSeek => false;
 
@@ -31,18 +33,18 @@ namespace Quiche.NET
 
         public override long Length => throw new NotSupportedException();
 
-        internal QuicheStream(QuicheConnection conn, ulong streamId)
+        internal QuicheStream(QuicheConnection conn, ulong streamId, bool isPeerInitiated)
         {
             this.conn = conn;
             this.streamId = streamId;
+            this.isPeerInitiated = isPeerInitiated;
 
-            if (CanRead)
+            if (isPeerInitiated)
             {
                 recvPipe = new Pipe();
                 recvStream = recvPipe.Reader.AsStream();
             }
-
-            if (CanWrite)
+            else
             {
                 sendPipe = new Pipe();
                 sendStream = sendPipe.Writer.AsStream();
