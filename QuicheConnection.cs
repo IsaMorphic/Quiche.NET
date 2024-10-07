@@ -490,10 +490,11 @@ public class QuicheConnection : IDisposable
     public QuicheStream GetUnusedLocalStream()
     {
         ulong streamId;
-        ulong streamIdx = 0;
         do
         {
-            streamId = (streamIdx++ << 2) | (shouldCloseSocket ? 1UL : 0UL);
+            streamId = (BitConverter.ToUInt64(RandomNumberGenerator.GetBytes(sizeof(ulong))) >> 4) << 2;
+            streamId |= shouldCloseSocket ? 0UL : 1UL; // signify client or server
+            streamId |= 2UL; // signify unidirectional stream, always
         }
         while (streamMap.ContainsKey(streamId));
         return GetStream(streamId);
