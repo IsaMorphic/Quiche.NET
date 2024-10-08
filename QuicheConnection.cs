@@ -257,7 +257,6 @@ public class QuicheConnection : IDisposable
                                         bufPtr + bytesSent, (nuint)(pair.buf.Length - bytesSent),
                                         false, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
-                                    Console.WriteLine($"STREAM ID: {pair.streamId}; STREAM COUNT: {pair.buf.Length}");
                                 }
                             }
                         }
@@ -272,7 +271,7 @@ public class QuicheConnection : IDisposable
                     }
                     else if (!hasNotSentAllBytes.IsValueCreated)
                     {
-                        QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                        QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                     }
                 }
             }
