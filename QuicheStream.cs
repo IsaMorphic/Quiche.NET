@@ -45,8 +45,8 @@ namespace Quiche.NET
             this.conn = conn;
             this.streamId = streamId;
 
-            bool isPeerInitiated = ((streamId & 1) == 1) != conn.IsServer;
-            bool isBidirectional = (streamId & 2) == 2;
+            bool isPeerInitiated = ((streamId & 1) == 0) != conn.IsServer;
+            bool isBidirectional = (streamId & 2) == 0;
 
             if (isPeerInitiated || isBidirectional)
             {
