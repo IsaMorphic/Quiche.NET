@@ -506,7 +506,7 @@ public class QuicheConnection : IDisposable
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (IsServer ? 0x3UL : 0x2UL);
+            streamId = (streamIdx++ << 2) | (IsServer ? 0x1UL : 0x0UL);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
