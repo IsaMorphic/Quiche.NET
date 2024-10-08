@@ -255,7 +255,7 @@ public class QuicheConnection : IDisposable
                                     errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                                     resultOrError = (long)NativePtr->StreamSend(pair.streamId,
                                         bufPtr + bytesSent, (nuint)(pair.buf.Length - bytesSent),
-                                        false, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                        !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
                                 }
                             }
@@ -413,7 +413,7 @@ public class QuicheConnection : IDisposable
                     }
                     else
                     {
-                        QuicheException.ThrowIfError((QuicheError)errorCode, "An uncaught error occured in quiche!");
+                        QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                     }
                 }
             }
