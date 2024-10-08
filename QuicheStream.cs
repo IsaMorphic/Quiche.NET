@@ -91,12 +91,12 @@ namespace Quiche.NET
             {
                 lock (recvPipe)
                 {
-                    int readCount = recvStream.Read(buffer, offset, count);
-                    firstReadFlag = true;
-                    return readCount;
+                    return recvStream.Read(buffer, offset, count);
                 }
             }
         }
+
+        internal void SetFirstRead() => firstReadFlag = true;
 
         public override void Write(byte[] buffer, int offset, int count)
         {
@@ -107,9 +107,10 @@ namespace Quiche.NET
             else
             {
                 sendStream.Write(buffer, offset, count);
-                firstWriteFlag = true;
             }
         }
+
+        internal void SetFirstWrite() => firstWriteFlag = true;
 
         public override long Seek(long offset, SeekOrigin origin) =>
             throw new NotSupportedException();

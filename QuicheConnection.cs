@@ -285,6 +285,8 @@ public class QuicheConnection : IDisposable
                     {
                         QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                     }
+
+                    stream.SetFirstWrite();
                 }
             }
             catch (QuicheException ex) when
@@ -428,6 +430,8 @@ public class QuicheConnection : IDisposable
                         QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
                     }
                 }
+
+                stream.SetFirstRead();
             }
             catch (QuicheException ex) when
                 (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
