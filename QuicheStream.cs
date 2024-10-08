@@ -12,6 +12,12 @@ namespace Quiche.NET
             Write = 1,
         }
 
+        public enum Direction
+        {
+            Bidirectional = 0x0,
+            Unidirectional = 0x2
+        }
+
         private readonly Pipe? recvPipe, sendPipe;
         private readonly Stream? recvStream, sendStream;
 
@@ -39,11 +45,20 @@ namespace Quiche.NET
             this.conn = conn;
             this.streamId = streamId;
 
-            recvPipe = new Pipe();
-            recvStream = recvPipe.Reader.AsStream(leaveOpen: true);
+            bool isPeerInitiated = ((streamId & 1) == 1) != conn.IsServer;
+            bool isBidirectional = (streamId & 2) == 2;
 
-            sendPipe = new Pipe();
-            sendStream = sendPipe.Writer.AsStream(leaveOpen: true);
+            if (isPeerInitiated || isBidirectional)
+            {
+                recvPipe = new Pipe();
+                recvStream = recvPipe.Reader.AsStream(leaveOpen: true);
+            }
+
+            if (!isPeerInitiated || isBidirectional)
+            {
+                sendPipe = new Pipe();
+                sendStream = sendPipe.Writer.AsStream(leaveOpen: true);
+            }
         }
 
         internal async Task ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
@@ -56,7 +71,7 @@ namespace Quiche.NET
             {
                 lock (recvPipe)
                 {
-                    Memory<byte> memory = recvPipe.Writer.GetMemory((int)QuicheLibrary.MAX_DATAGRAM_LEN);
+                    Memory<byte> memory = recvPipe.Writer.GetMemory(QuicheLibrary.MAX_BUFFER_LEN);
                     bufIn.CopyTo(memory);
                     recvPipe.Writer.Advance(bufIn.Length);
                 }
@@ -76,9 +91,9 @@ namespace Quiche.NET
 
             if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
-                conn.sendQueue.AddOrUpdate(streamId, 
-                    key => result.Buffer.ToArray(), 
-                    (key, buf) => [..buf, ..result.Buffer.ToArray()]
+                conn.sendQueue.AddOrUpdate(streamId,
+                    key => result.Buffer.ToArray(),
+                    (key, buf) => [.. buf, .. result.Buffer.ToArray()]
                     );
                 sendPipe.Reader.AdvanceTo(result.Buffer.End);
             }

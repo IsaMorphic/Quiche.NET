@@ -187,7 +187,7 @@ public class QuicheConnection : IDisposable
 
     private async Task SendAsync(CancellationToken cancellationToken)
     {
-        byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+        byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
 
         SendScheduleInfo info = new() { SendBuffer = packetBuf };
         Timer timer = new Timer(SendPacket, info, Timeout.Infinite, Timeout.Infinite);
@@ -322,7 +322,7 @@ public class QuicheConnection : IDisposable
 
     private async Task ReceiveAsync(CancellationToken cancellationToken)
     {
-        byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+        byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
         while (!cancellationToken.IsCancellationRequested)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -470,7 +470,7 @@ public class QuicheConnection : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+            byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
             SocketReceiveFromResult result = await socket.ReceiveFromAsync(
                 packetBuf, remoteEndPoint, cancellationToken);
             recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
@@ -522,13 +522,13 @@ public class QuicheConnection : IDisposable
         return resultOrError == 0;
     }
 
-    public async Task<QuicheStream> CreateOutboundStreamAsync(CancellationToken cancellationToken)
+    public async Task<QuicheStream> CreateOutboundStreamAsync(QuicheStream.Direction direction, CancellationToken cancellationToken = default)
     {
         ulong streamId, streamIdx = 0;
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (IsServer ? 0x1UL : 0x0UL);
+            streamId = (streamIdx++ << 2) | (ulong)direction | (IsServer ? 0x1UL : 0x0UL);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
@@ -541,7 +541,7 @@ public class QuicheConnection : IDisposable
         return GetStream(streamId);
     }
 
-    public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
+    public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken = default)
     {
         if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
         {
