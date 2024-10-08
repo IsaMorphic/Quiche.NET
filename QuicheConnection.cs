@@ -243,7 +243,7 @@ public class QuicheConnection : IDisposable
                     long bytesSent = 0;
                     Lazy<bool> hasNotSentAllBytes;
 
-                    QuicheStream stream = GetStream(pair.streamId, false);
+                    QuicheStream stream = GetStream(pair.streamId);
                     do
                     {
                         unsafe
@@ -379,7 +379,7 @@ public class QuicheConnection : IDisposable
                 }
                 else { continue; }
 
-                QuicheStream stream = GetStream((ulong)streamIdOrNone, true);
+                QuicheStream stream = GetStream((ulong)streamIdOrNone);
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
                     streamBag.Add(tcs = new());
@@ -454,8 +454,8 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    private QuicheStream GetStream(ulong streamId, bool isPeerInitiated) =>
-        streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
+    private QuicheStream GetStream(ulong streamId) =>
+        streamMap.GetOrAdd(streamId, id => new(this, id));
 
     internal unsafe bool IsStreamFinished(ulong streamId)
     {
@@ -515,7 +515,7 @@ public class QuicheConnection : IDisposable
                 break;
             }
         } while (!cancellationToken.IsCancellationRequested);
-        return GetStream(streamId, false);
+        return GetStream(streamId);
     }
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken)
