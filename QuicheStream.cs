@@ -1,4 +1,5 @@
 ﻿
+using System.Buffers;
 using System.IO.Pipelines;
 
 namespace Quiche.NET
@@ -19,9 +20,9 @@ namespace Quiche.NET
 
         private readonly bool isPeerInitiated;
 
-        private bool firstWriteFlag;
+        private bool firstReadFlag, firstWriteFlag;
 
-        public override bool CanRead => isPeerInitiated && !conn.IsStreamFinished(streamId);
+        public override bool CanRead => isPeerInitiated && !(firstReadFlag && conn.IsStreamFinished(streamId));
 
         public override bool CanWrite => !isPeerInitiated && !(firstWriteFlag && conn.IsStreamFinished(streamId));
 
@@ -81,12 +82,9 @@ namespace Quiche.NET
         {
             sendStream?.Flush();
 
-            while (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
+            if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
-                foreach (var memory in result.Buffer)
-                {
-                    conn.sendQueue.Enqueue((streamId, memory.ToArray()));
-                }
+                conn.sendQueue.Enqueue((streamId, result.Buffer.ToArray()));
                 sendPipe.Reader.AdvanceTo(result.Buffer.End);
             }
         }
@@ -101,7 +99,9 @@ namespace Quiche.NET
             {
                 lock (recvPipe)
                 {
-                    return recvStream.Read(buffer, offset, count);
+                    int readCount = recvStream.Read(buffer, offset, count);
+                    firstReadFlag = true;
+                    return readCount;
                 }
             }
         }
@@ -115,8 +115,6 @@ namespace Quiche.NET
             else
             {
                 sendStream.Write(buffer, offset, count);
-                Flush();
-
                 firstWriteFlag = true;
             }
         }

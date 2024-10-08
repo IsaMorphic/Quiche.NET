@@ -257,6 +257,7 @@ public class QuicheConnection : IDisposable
                                         bufPtr + bytesSent, (nuint)(pair.buf.Length - bytesSent),
                                         false, (ulong*)Unsafe.AsPointer(ref errorCode)
                                         );
+                                    Console.WriteLine($"STREAM ID: {pair.streamId}; STREAM COUNT: {pair.buf.Length}");
                                 }
                             }
                         }
