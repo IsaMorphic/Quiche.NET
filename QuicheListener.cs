@@ -25,7 +25,7 @@ public class QuicheListener : IDisposable
     {
         try
         {
-            byte[] recvBuffer = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
+            byte[] recvBuffer = new byte[QuicheLibrary.MAX_BUFFER_LEN];
             while (!cancellationToken.IsCancellationRequested)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -79,11 +79,6 @@ public class QuicheListener : IDisposable
         {
             if (disposing)
             {
-                foreach (QuicheConnection conn in connMap.Values)
-                {
-                    conn.Dispose();
-                }
-
                 connMap.Clear();
             }
 
