@@ -19,9 +19,9 @@ namespace Quiche.NET
 
         private readonly bool isPeerInitiated;
 
-        public override bool CanRead => isPeerInitiated && !conn.IsClosed;
+        public override bool CanRead => isPeerInitiated && !conn.IsStreamFinished(streamId);
 
-        public override bool CanWrite => !isPeerInitiated && !conn.IsClosed;
+        public override bool CanWrite => !isPeerInitiated && !conn.IsStreamFinished(streamId);
 
         public override bool CanSeek => false;
 
@@ -67,12 +67,10 @@ namespace Quiche.NET
                 }
 
                 await recvPipe.Writer.FlushAsync(cancellationToken);
+
                 if (finished)
                 {
-                    lock (recvPipe)
-                    {
-                        recvPipe.Writer.Complete();
-                    }
+                    recvPipe.Writer.Complete();
                 }
             }
         }

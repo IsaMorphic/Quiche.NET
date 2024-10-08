@@ -92,7 +92,6 @@ public class QuicheConnection : IDisposable
 
     private readonly Socket socket;
     private readonly EndPoint remoteEndPoint;
-    private readonly bool shouldCloseSocket;
 
     internal readonly ConcurrentQueue<(ulong, byte[])> sendQueue;
     internal readonly ConcurrentQueue<ReadOnlyMemory<byte>> recvQueue;
@@ -111,6 +110,17 @@ public class QuicheConnection : IDisposable
             lock (this)
             {
                 return NativePtr is not null && NativePtr->IsClosed();
+            }
+        }
+    }
+
+    public unsafe bool IsServer
+    {
+        get
+        {
+            lock (this)
+            {
+                return NativePtr is not null && NativePtr->IsServer();
             }
         }
     }
@@ -141,12 +151,10 @@ public class QuicheConnection : IDisposable
         if (initialData.IsEmpty)
         {
             listenTask = Task.Run(() => ListenAsync(cts.Token));
-            shouldCloseSocket = true;
         }
         else
         {
             recvQueue.Enqueue(initialData);
-            shouldCloseSocket = false;
         }
     }
 
@@ -358,7 +366,7 @@ public class QuicheConnection : IDisposable
                 QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
 
                 long streamIdOrNone;
-                if (isConnEstablished)
+                if (isConnEstablished || isInEarlyData)
                 {
                     unsafe
                     {
@@ -449,11 +457,19 @@ public class QuicheConnection : IDisposable
     private QuicheStream GetStream(ulong streamId, bool isPeerInitiated) =>
         streamMap.GetOrAdd(streamId, id => new(this, id, isPeerInitiated));
 
+    internal unsafe bool IsStreamFinished(ulong streamId)
+    {
+        lock (this)
+        {
+            return NativePtr is not null && NativePtr->StreamFinished(streamId);
+        }
+    }
+
     internal unsafe bool IsStreamReadable(ulong streamId)
     {
         lock (this)
         {
-            return NativePtr->StreamReadable(streamId);
+            return NativePtr is not null && NativePtr->StreamReadable(streamId);
         }
     }
 
@@ -462,7 +478,14 @@ public class QuicheConnection : IDisposable
         long resultOrError;
         lock (this)
         {
-            resultOrError = NativePtr->StreamWritable(streamId, 0);
+            if (NativePtr is null)
+            {
+                return false;
+            }
+            else
+            {
+                resultOrError = NativePtr->StreamWritable(streamId, 0);
+            }
         }
 
         try
@@ -476,13 +499,13 @@ public class QuicheConnection : IDisposable
         return resultOrError == 0;
     }
 
-    public async Task<QuicheStream> OpenStreamAsync(CancellationToken cancellationToken)
+    public async Task<QuicheStream> CreateOutboundStreamAsync(CancellationToken cancellationToken)
     {
         ulong streamId, streamIdx = 0;
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (shouldCloseSocket ? 0x2UL : 0x3UL);
+            streamId = (streamIdx++ << 2) | (IsServer ? 0x3UL : 0x2UL);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
@@ -563,7 +586,7 @@ public class QuicheConnection : IDisposable
                     streamMap.Clear();
                     streamBag.Clear();
 
-                    if (shouldCloseSocket)
+                    if (!IsServer)
                     {
                         socket.Dispose();
                     }
