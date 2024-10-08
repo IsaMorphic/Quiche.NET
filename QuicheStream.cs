@@ -76,7 +76,10 @@ namespace Quiche.NET
 
             if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
-                conn.sendQueue.Enqueue((streamId, result.Buffer.ToArray()));
+                conn.sendQueue.AddOrUpdate(streamId, 
+                    key => result.Buffer.ToArray(), 
+                    (key, buf) => [..buf, ..result.Buffer.ToArray()]
+                    );
                 sendPipe.Reader.AdvanceTo(result.Buffer.End);
             }
         }

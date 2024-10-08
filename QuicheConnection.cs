@@ -94,7 +94,7 @@ public class QuicheConnection : IDisposable
     private readonly Socket socket;
     private readonly EndPoint remoteEndPoint;
 
-    internal readonly ConcurrentQueue<(ulong, byte[])> sendQueue;
+    internal readonly ConcurrentDictionary<ulong, byte[]> sendQueue;
     internal readonly ConcurrentQueue<ReadOnlyMemory<byte>> recvQueue;
 
     private readonly byte[] connectionId;
@@ -226,6 +226,7 @@ public class QuicheConnection : IDisposable
                     Timeout.InfiniteTimeSpan
                     );
 
+                long streamIdOrNone;
                 bool isConnectionEstablished, isInEarlyData;
                 unsafe
                 {
@@ -233,31 +234,34 @@ public class QuicheConnection : IDisposable
                     {
                         isConnectionEstablished = NativePtr->IsEstablished();
                         isInEarlyData = NativePtr->IsInEarlyData();
+                        streamIdOrNone = NativePtr->StreamWritableNext();
                     }
                 }
 
-                if ((isConnectionEstablished || isInEarlyData) && sendQueue
-                    .TryDequeue(out (ulong streamId, byte[] buf) pair))
+                if ((isConnectionEstablished || isInEarlyData) &&
+                    streamIdOrNone >= 0 && sendQueue.TryRemove(
+                        (ulong)streamIdOrNone, out byte[]? streamBuf))
                 {
                     long errorCode;
 
                     long bytesSent = 0;
                     Lazy<bool> hasNotSentAllBytes;
 
-                    QuicheStream stream = GetStream(pair.streamId);
+                    ulong streamId = (ulong)streamIdOrNone;
+                    QuicheStream stream = GetStream(streamId);
                     do
                     {
                         unsafe
                         {
                             lock (this)
                             {
-                                fixed (byte* bufPtr = pair.buf)
+                                fixed (byte* bufPtr = streamBuf)
                                 {
                                     if (stream.CanWrite)
                                     {
                                         errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                        resultOrError = (long)NativePtr->StreamSend(pair.streamId,
-                                            bufPtr + bytesSent, (nuint)(pair.buf.Length - bytesSent),
+                                        resultOrError = (long)NativePtr->StreamSend(streamId,
+                                            bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
                                             false, (ulong*)Unsafe.AsPointer(ref errorCode)
                                             );
                                     }
@@ -265,7 +269,7 @@ public class QuicheConnection : IDisposable
                                     {
                                         errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                                         resultOrError = (long)NativePtr->StreamSend(
-                                            pair.streamId, bufPtr, nuint.Zero, true, 
+                                            streamId, bufPtr, nuint.Zero, true,
                                             (ulong*)Unsafe.AsPointer(ref errorCode)
                                             );
                                     }
@@ -273,13 +277,16 @@ public class QuicheConnection : IDisposable
                             }
                         }
 
-                        hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < pair.buf.Length);
+                        hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < streamBuf.Length);
                     } while (resultOrError >= 0 && hasNotSentAllBytes.Value);
 
                     if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
                     {
                         // requeue the data if it can't be sent right now!
-                        sendQueue.Enqueue((pair.streamId, pair.buf[(int)bytesSent..]));
+                        sendQueue.AddOrUpdate(streamId, 
+                            key => streamBuf[(int)bytesSent..], 
+                            (key, buf) => [..streamBuf[(int)bytesSent..], ..buf]
+                            );
                     }
                     else if (!hasNotSentAllBytes.IsValueCreated)
                     {
