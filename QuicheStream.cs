@@ -40,10 +40,10 @@ namespace Quiche.NET
             this.streamId = streamId;
 
             recvPipe = new Pipe();
-            recvStream = recvPipe.Reader.AsStream();
+            recvStream = recvPipe.Reader.AsStream(leaveOpen: true);
 
             sendPipe = new Pipe();
-            sendStream = sendPipe.Writer.AsStream();
+            sendStream = sendPipe.Writer.AsStream(leaveOpen: true);
         }
 
         internal async Task ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)

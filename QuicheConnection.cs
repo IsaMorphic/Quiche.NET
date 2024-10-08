@@ -1,3 +1,4 @@
+using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
@@ -252,11 +253,22 @@ public class QuicheConnection : IDisposable
                             {
                                 fixed (byte* bufPtr = pair.buf)
                                 {
-                                    errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                    resultOrError = (long)NativePtr->StreamSend(pair.streamId,
-                                        bufPtr + bytesSent, (nuint)(pair.buf.Length - bytesSent),
-                                        !stream.CanWrite, (ulong*)Unsafe.AsPointer(ref errorCode)
-                                        );
+                                    if (stream.CanWrite)
+                                    {
+                                        errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                        resultOrError = (long)NativePtr->StreamSend(pair.streamId,
+                                            bufPtr + bytesSent, (nuint)(pair.buf.Length - bytesSent),
+                                            false, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                            );
+                                    }
+                                    else
+                                    {
+                                        errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                        resultOrError = (long)NativePtr->StreamSend(
+                                            pair.streamId, bufPtr, nuint.Zero, true, 
+                                            (ulong*)Unsafe.AsPointer(ref errorCode)
+                                            );
+                                    }
                                 }
                             }
                         }
