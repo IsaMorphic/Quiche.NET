@@ -18,13 +18,11 @@ namespace Quiche.NET
         private readonly QuicheConnection conn;
         private readonly ulong streamId;
 
-        private readonly bool isPeerInitiated;
-
         private bool firstReadFlag, firstWriteFlag;
 
-        public override bool CanRead => isPeerInitiated && !(firstReadFlag && conn.IsStreamFinished(streamId));
+        public override bool CanRead => !(firstReadFlag && conn.IsStreamFinished(streamId));
 
-        public override bool CanWrite => !isPeerInitiated && !(firstWriteFlag && conn.IsStreamFinished(streamId));
+        public override bool CanWrite => !(firstWriteFlag && conn.IsStreamFinished(streamId));
 
         public override bool CanSeek => false;
 
@@ -36,22 +34,16 @@ namespace Quiche.NET
 
         public override long Length => throw new NotSupportedException();
 
-        internal QuicheStream(QuicheConnection conn, ulong streamId, bool isPeerInitiated)
+        internal QuicheStream(QuicheConnection conn, ulong streamId)
         {
             this.conn = conn;
             this.streamId = streamId;
-            this.isPeerInitiated = isPeerInitiated;
 
-            if (isPeerInitiated)
-            {
-                recvPipe = new Pipe();
-                recvStream = recvPipe.Reader.AsStream();
-            }
-            else
-            {
-                sendPipe = new Pipe();
-                sendStream = sendPipe.Writer.AsStream();
-            }
+            recvPipe = new Pipe();
+            recvStream = recvPipe.Reader.AsStream();
+
+            sendPipe = new Pipe();
+            sendStream = sendPipe.Writer.AsStream();
         }
 
         internal async Task ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
@@ -108,7 +100,7 @@ namespace Quiche.NET
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if (sendStream is null)
+            if (sendPipe is null || sendStream is null)
             {
                 throw new NotSupportedException();
             }
