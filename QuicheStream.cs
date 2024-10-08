@@ -19,9 +19,11 @@ namespace Quiche.NET
 
         private readonly bool isPeerInitiated;
 
+        private bool firstWriteFlag;
+
         public override bool CanRead => isPeerInitiated && !conn.IsStreamFinished(streamId);
 
-        public override bool CanWrite => !isPeerInitiated && !conn.IsStreamFinished(streamId);
+        public override bool CanWrite => !isPeerInitiated && !(firstWriteFlag && conn.IsStreamFinished(streamId));
 
         public override bool CanSeek => false;
 
@@ -114,6 +116,8 @@ namespace Quiche.NET
             {
                 sendStream.Write(buffer, offset, count);
                 Flush();
+
+                firstWriteFlag = true;
             }
         }
 
