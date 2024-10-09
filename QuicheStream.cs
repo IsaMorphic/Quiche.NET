@@ -66,12 +66,15 @@ namespace Quiche.NET
             }
             else
             {
-                Memory<byte> memory = recvPipe.Writer.GetMemory(bufIn.Length); bufIn.CopyTo(memory);
-                recvPipe.Writer.Advance(bufIn.Length);
+                lock (recvPipe)
+                {
+                    Memory<byte> memory = recvPipe.Writer.GetMemory(bufIn.Length);
+                    bufIn.CopyTo(memory); recvPipe.Writer.Advance(bufIn.Length);
+                }
 
-                FlushResult result = await recvPipe.Writer.FlushAsync(cancellationToken);
+                await recvPipe.Writer.FlushAsync(cancellationToken);
 
-                if (result.IsCompleted || finished)
+                if (finished)
                 {
                     await recvPipe.Writer.CompleteAsync();
                 }
@@ -80,7 +83,8 @@ namespace Quiche.NET
 
         public override void Flush()
         {
-            if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
+            FlushResult? flushResult = sendPipe?.Writer.FlushAsync().Result;
+            if ((flushResult?.IsCompleted ?? false) && (sendPipe?.Reader.TryRead(out ReadResult result) ?? false))
             {
                 conn.sendQueue.AddOrUpdate(streamId,
                     key => result.Buffer.ToArray(),
@@ -99,18 +103,20 @@ namespace Quiche.NET
             else
             {
                 int readCount;
-                if (recvPipe.Reader.TryRead(out ReadResult result))
+                lock (recvPipe)
                 {
-                    readCount = (int)Math.Min(result.Buffer.Length, count);
+                    if (recvPipe.Reader.TryRead(out ReadResult result))
+                    {
+                        readCount = (int)Math.Min(result.Buffer.Length, count);
 
-                    result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
-                    recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
+                        result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
+                        recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
+                    }
+                    else
+                    {
+                        readCount = 0;
+                    }
                 }
-                else
-                {
-                    readCount = 0;
-                }
-
                 return readCount;
             }
         }
@@ -128,12 +134,6 @@ namespace Quiche.NET
                 Memory<byte> memory = sendPipe.Writer.GetMemory(count);
                 buffer.AsMemory(offset, count).CopyTo(memory);
                 sendPipe.Writer.Advance(count);
-
-                FlushResult flushResult = sendPipe.Writer.FlushAsync().Result;
-                if (flushResult.IsCompleted) 
-                {
-                    sendPipe.Writer.Complete();
-                }
             }
         }
 
