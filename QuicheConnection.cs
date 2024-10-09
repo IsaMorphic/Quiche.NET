@@ -251,14 +251,18 @@ public class QuicheConnection : IDisposable
                 {
                     foreach (var (streamId, _) in sendQueue.ToArray())
                     {
-                        if(!sendQueue.TryRemove(streamId, out byte[]? streamBuf)) continue;
+                        QuicheStream stream = GetStream(streamId);
+
+                        if(!sendQueue.TryRemove(streamId, out byte[]? streamBuf)) 
+                        {
+                            stream.Flush();
+                            continue; 
+                        }
 
                         long errorCode;
 
                         long bytesSent = 0;
                         Lazy<bool> hasNotSentAllBytes;
-
-                        QuicheStream stream = GetStream(streamId);
                         do
                         {
                             unsafe
