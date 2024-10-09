@@ -122,6 +122,7 @@ namespace Quiche.NET
 
         public override void Flush()
         {
+            recvStream?.Flush();
             sendStream?.Flush();
 
             if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)

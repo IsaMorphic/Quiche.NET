@@ -208,35 +208,6 @@ public class QuicheConnection : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                long resultOrError = long.MaxValue;
-                SendInfo sendInfo = default;
-                unsafe
-                {
-                    lock (this)
-                    {
-                        fixed (byte* pktPtr = info.SendBuffer)
-                        {
-                            resultOrError = (long)NativePtr->Send(
-                                pktPtr, (nuint)info.SendBuffer.Length,
-                                (SendInfo*)Unsafe.AsPointer(ref sendInfo)
-                                );
-                        }
-                    }
-                }
-                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
-
-                lock (info)
-                {
-                    info.SendCount = (int)resultOrError;
-                }
-
-                timer.Change(
-                    TimeSpan.FromSeconds(Unsafe.As<timespec, CLong>
-                        (ref sendInfo.at).Value) +
-                    TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 100),
-                    Timeout.InfiniteTimeSpan
-                    );
-
                 bool isConnectionEstablished, isInEarlyData;
                 unsafe
                 {
@@ -247,6 +218,7 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
+                long resultOrError;
                 if (isConnectionEstablished || isInEarlyData)
                 {
                     foreach ((ulong streamId, QuicheStream stream) in streamMap.Where(x => x.Value.CanWrite))
@@ -308,6 +280,34 @@ public class QuicheConnection : IDisposable
                         stream.SetFirstWrite();
                     }
                 }
+
+                SendInfo sendInfo = default;
+                unsafe
+                {
+                    lock (this)
+                    {
+                        fixed (byte* pktPtr = info.SendBuffer)
+                        {
+                            resultOrError = (long)NativePtr->Send(
+                                pktPtr, (nuint)info.SendBuffer.Length,
+                                (SendInfo*)Unsafe.AsPointer(ref sendInfo)
+                                );
+                        }
+                    }
+                }
+                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+
+                lock (info)
+                {
+                    info.SendCount = (int)resultOrError;
+                }
+
+                timer.Change(
+                    TimeSpan.FromSeconds(Unsafe.As<timespec, CLong>
+                        (ref sendInfo.at).Value) +
+                    TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 100),
+                    Timeout.InfiniteTimeSpan
+                    );
             }
             catch (QuicheException ex) when
                 (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
