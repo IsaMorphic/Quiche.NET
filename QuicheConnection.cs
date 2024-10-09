@@ -104,7 +104,7 @@ public class QuicheConnection : IDisposable
 
     public Task ConnectionEstablished => establishedTcs.Task;
 
-    public unsafe bool IsClosed
+    internal unsafe bool IsClosed
     {
         get
         {
@@ -115,13 +115,24 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    public unsafe bool IsServer
+    internal unsafe bool IsServer
     {
         get
         {
             lock (this)
             {
                 return NativePtr is not null && NativePtr->IsServer();
+            }
+        }
+    }
+
+    internal unsafe int NextTimeoutMilliseconds 
+    {
+        get
+        {
+            lock(this)
+            {
+                return NativePtr is null ? 0 : (int)NativePtr->TimeoutAsMillis();
             }
         }
     }
@@ -434,7 +445,7 @@ public class QuicheConnection : IDisposable
                     }
                     else
                     {
-                        QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+                        QuicheException.ThrowIfError((QuicheError)recvCount, "An uncaught error occured in quiche!");
                     }
                 }
 

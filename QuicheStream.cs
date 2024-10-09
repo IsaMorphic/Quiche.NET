@@ -28,9 +28,44 @@ namespace Quiche.NET
 
         public override bool CanRead => !(firstReadFlag && conn.IsStreamFinished(streamId));
 
+        public override int ReadTimeout
+        {
+            get => recvStream?.ReadTimeout ?? throw new InvalidOperationException();
+            set 
+            {
+                if(recvStream is not null)
+                {
+                    recvStream.ReadTimeout = value;
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+        }
+
         public override bool CanWrite => !(firstWriteFlag && conn.IsStreamFinished(streamId));
 
+        public override int WriteTimeout
+        {
+            get => sendStream?.WriteTimeout ?? throw new InvalidOperationException();
+            set 
+            {
+                if(sendStream is not null)
+                {
+                    sendStream.WriteTimeout = value;
+                }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+        }
+
         public override bool CanSeek => false;
+
+        public override bool CanTimeout => 
+            (recvStream?.CanTimeout ?? false) || (sendStream?.CanTimeout ?? false);
 
         public override long Position
         {
@@ -45,19 +80,19 @@ namespace Quiche.NET
             this.conn = conn;
             this.streamId = streamId;
 
-            bool isPeerInitiated = ((streamId & 1) == 0) != conn.IsServer;
+            bool isPeerInitiated = ((streamId & 1) == 0) ^ conn.IsServer;
             bool isBidirectional = (streamId & 2) == 0;
 
             if (isPeerInitiated || isBidirectional)
             {
                 recvPipe = new Pipe();
-                recvStream = recvPipe.Reader.AsStream(leaveOpen: true);
+                recvStream = recvPipe.Reader.AsStream();
             }
 
             if (!isPeerInitiated || isBidirectional)
             {
                 sendPipe = new Pipe();
-                sendStream = sendPipe.Writer.AsStream(leaveOpen: true);
+                sendStream = sendPipe.Writer.AsStream();
             }
         }
 
@@ -80,7 +115,7 @@ namespace Quiche.NET
 
                 if (finished)
                 {
-                    recvPipe.Writer.Complete();
+                    await recvPipe.Writer.CompleteAsync();
                 }
             }
         }
@@ -140,12 +175,26 @@ namespace Quiche.NET
         {
             base.Close();
 
-            recvPipe?.Writer.Complete();
-            sendPipe?.Writer.Complete();
+            recvStream?.Close();
+            sendStream?.Close();
 
             try
             {
-                if (CanRead)
+                if (CanRead && CanWrite)
+                {
+                    QuicheException.ThrowIfError((QuicheError)
+                        conn.NativePtr->StreamShutdown(streamId,
+                        (int)Shutdown.Read, 0x00),
+                        $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
+                        );
+
+                    QuicheException.ThrowIfError((QuicheError)
+                        conn.NativePtr->StreamShutdown(streamId,
+                        (int)Shutdown.Write, 0x00),
+                        $"Failed to shutdown writing side of stream! (ID: {streamId:X16})"
+                        );
+                }
+                else if (CanRead)
                 {
                     QuicheException.ThrowIfError((QuicheError)
                         conn.NativePtr->StreamShutdown(streamId,
@@ -153,8 +202,7 @@ namespace Quiche.NET
                         $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
                         );
                 }
-
-                if (CanWrite)
+                else if (CanWrite)
                 {
                     QuicheException.ThrowIfError((QuicheError)
                         conn.NativePtr->StreamShutdown(streamId,
