@@ -83,8 +83,7 @@ namespace Quiche.NET
 
         public override void Flush()
         {
-            FlushResult? flushResult = sendPipe?.Writer.FlushAsync().Result;
-            if ((flushResult?.IsCompleted ?? false) && (sendPipe?.Reader.TryRead(out ReadResult result) ?? false))
+            if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
                 conn.sendQueue.AddOrUpdate(streamId,
                     key => result.Buffer.ToArray(),
@@ -134,6 +133,8 @@ namespace Quiche.NET
                 Memory<byte> memory = sendPipe.Writer.GetMemory(count);
                 buffer.AsMemory(offset, count).CopyTo(memory);
                 sendPipe.Writer.Advance(count);
+
+                sendPipe.Writer.FlushAsync();
             }
         }
 
