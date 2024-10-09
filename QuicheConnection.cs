@@ -249,10 +249,8 @@ public class QuicheConnection : IDisposable
 
                 if (isConnectionEstablished || isInEarlyData)
                 {
-                    foreach (var (streamId, _) in sendQueue.ToArray())
+                    foreach ((ulong streamId, QuicheStream stream) in streamMap.Where(x => x.Value.CanWrite))
                     {
-                        QuicheStream stream = GetStream(streamId);
-
                         if(!sendQueue.TryRemove(streamId, out byte[]? streamBuf)) 
                         {
                             stream.Flush();
