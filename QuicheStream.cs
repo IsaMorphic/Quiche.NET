@@ -102,20 +102,22 @@ namespace Quiche.NET
             else
             {
                 int readCount;
-                lock (recvPipe)
+                if (recvPipe.Reader.TryRead(out ReadResult result))
                 {
-                    if (recvPipe.Reader.TryRead(out ReadResult result))
-                    {
-                        readCount = (int)Math.Min(result.Buffer.Length, count);
+                    readCount = (int)Math.Min(result.Buffer.Length, count);
 
-                        result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
-                        recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
-                    }
-                    else
-                    {
-                        readCount = 0;
-                    }
+                    result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
+                    recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
                 }
+                else if(recvPipe.Writer.UnflushedBytes == 0)
+                {
+                    throw new EndOfStreamException();
+                }
+                else
+                {
+                    readCount = 0;
+                }
+
                 return readCount;
             }
         }
