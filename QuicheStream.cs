@@ -66,8 +66,7 @@ namespace Quiche.NET
             }
             else
             {
-                Memory<byte> memory = recvPipe.Writer.GetMemory(bufIn.Length);
-                bufIn.CopyTo(memory);
+                Memory<byte> memory = recvPipe.Writer.GetMemory(bufIn.Length); bufIn.CopyTo(memory);
                 recvPipe.Writer.Advance(bufIn.Length);
 
                 FlushResult result = await recvPipe.Writer.FlushAsync(cancellationToken);
@@ -99,16 +98,18 @@ namespace Quiche.NET
             }
             else
             {
-                ReadResult result;
-                while (!recvPipe.Reader.TryRead(out result))
+                int readCount;
+                if (recvPipe.Reader.TryRead(out ReadResult result))
                 {
-                    Thread.Sleep(75);
+                    readCount = (int)Math.Min(result.Buffer.Length, count);
+
+                    result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
+                    recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
                 }
-
-                int readCount = (int)Math.Min(result.Buffer.Length, count);
-
-                result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
-                recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
+                else
+                {
+                    readCount = 0;
+                }
 
                 return readCount;
             }
@@ -129,7 +130,7 @@ namespace Quiche.NET
                 sendPipe.Writer.Advance(count);
 
                 FlushResult flushResult = sendPipe.Writer.FlushAsync().Result;
-                if (flushResult.IsCompleted)
+                if (flushResult.IsCompleted) 
                 {
                     sendPipe.Writer.Complete();
                 }
