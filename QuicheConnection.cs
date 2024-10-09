@@ -198,7 +198,7 @@ public class QuicheConnection : IDisposable
 
     private async Task SendAsync(CancellationToken cancellationToken)
     {
-        byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+        byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
 
         SendScheduleInfo info = new() { SendBuffer = packetBuf };
         Timer timer = new Timer(SendPacket, info, Timeout.Infinite, Timeout.Infinite);
@@ -333,7 +333,7 @@ public class QuicheConnection : IDisposable
 
     private async Task ReceiveAsync(CancellationToken cancellationToken)
     {
-        byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+        byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
         while (!cancellationToken.IsCancellationRequested)
         {
             cancellationToken.ThrowIfCancellationRequested();
