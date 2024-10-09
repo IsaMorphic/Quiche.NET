@@ -102,7 +102,7 @@ namespace Quiche.NET
                 if (recvPipe.Reader.TryRead(out ReadResult result))
                 {
                     readCount = (int)Math.Min(result.Buffer.Length, count);
-                    result.Buffer.CopyTo(buffer.AsSpan(offset, readCount));
+                    result.Buffer.Slice(0, readCount).CopyTo(buffer.AsSpan(offset, readCount));
                     recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
                 }
                 else
@@ -128,7 +128,7 @@ namespace Quiche.NET
                 buffer.AsMemory(offset, count).CopyTo(memory);
                 sendPipe.Writer.Advance(count);
 
-                _ = sendPipe.Writer.FlushAsync().Result;
+                sendPipe.Writer.FlushAsync();
             }
         }
 
