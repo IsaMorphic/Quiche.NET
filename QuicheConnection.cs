@@ -377,7 +377,7 @@ public class QuicheConnection : IDisposable
                     await Task.Delay(75, cancellationToken);
                     continue;
                 }
-                else if (nextPacket.IsEmpty)
+                else if (IsClosed)
                 {
                     throw new QuicheException(QuicheError.QUICHE_ERR_DONE, null);
                 }
