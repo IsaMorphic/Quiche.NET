@@ -371,13 +371,11 @@ public class QuicheConnection : IDisposable
                     establishedTcs.TrySetResult();
                 }
 
-                ReadOnlyMemory<byte> nextPacket;
-                if (!recvQueue.TryDequeue(out nextPacket))
+                ReadOnlyMemory<byte> nextPacket = ReadOnlyMemory<byte>.Empty;
+                if (recvQueue.TryDequeue(out nextPacket))
                 {
-                    await Task.Delay(75, cancellationToken);
-                    continue;
+                    nextPacket.CopyTo(packetBuf);
                 }
-                nextPacket.CopyTo(packetBuf);
 
                 long resultOrError;
                 unsafe
