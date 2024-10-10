@@ -467,6 +467,7 @@ public class QuicheConnection : IDisposable
                 continue;
             }
             catch (QuicheException ex)
+            when (ex.ErrorCode != QuicheError.QUICHE_ERR_DONE)
             {
                 establishedTcs.TrySetException(ex);
                 while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
