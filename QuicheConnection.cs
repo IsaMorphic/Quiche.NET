@@ -464,6 +464,7 @@ public class QuicheConnection : IDisposable
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
                 await Task.Delay(75, cancellationToken);
+                continue;
             }
             catch (QuicheException ex)
             {
