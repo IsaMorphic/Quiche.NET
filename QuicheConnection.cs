@@ -126,11 +126,11 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    internal unsafe int NextTimeoutMilliseconds 
+    internal unsafe int NextTimeoutMilliseconds
     {
         get
         {
-            lock(this)
+            lock (this)
             {
                 return NativePtr is null ? 0 : (int)NativePtr->TimeoutAsMillis();
             }
@@ -223,10 +223,10 @@ public class QuicheConnection : IDisposable
                 {
                     foreach ((ulong streamId, QuicheStream stream) in streamMap.Where(x => x.Value.CanWrite))
                     {
-                        if(!sendQueue.TryRemove(streamId, out byte[]? streamBuf)) 
+                        if (!sendQueue.TryRemove(streamId, out byte[]? streamBuf))
                         {
                             stream.Flush();
-                            continue; 
+                            continue;
                         }
 
                         long errorCode;
@@ -264,18 +264,12 @@ public class QuicheConnection : IDisposable
                             hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < streamBuf.Length);
                         } while (resultOrError >= 0 && hasNotSentAllBytes.Value);
 
-                        if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
-                        {
-                            // requeue the data if it can't be sent right now!
-                            sendQueue.AddOrUpdate(streamId,
-                                key => streamBuf[(int)bytesSent..],
-                                (key, buf) => [.. streamBuf[(int)bytesSent..], .. buf]
-                                );
-                        }
-                        else if (!hasNotSentAllBytes.IsValueCreated)
-                        {
-                            QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
-                        }
+                        sendQueue.AddOrUpdate(streamId,
+                            key => streamBuf[(int)bytesSent..],
+                            (key, buf) => [.. streamBuf[(int)bytesSent..], .. buf]
+                            );
+
+                        QuicheException.ThrowIfError((QuicheError)resultOrError);
 
                         stream.SetFirstWrite();
                     }
@@ -295,7 +289,7 @@ public class QuicheConnection : IDisposable
                         }
                     }
                 }
-                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+                QuicheException.ThrowIfError((QuicheError)resultOrError);
 
                 lock (info)
                 {
@@ -397,7 +391,7 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+                QuicheException.ThrowIfError((QuicheError)resultOrError);
 
                 long streamIdOrNone;
                 if (isConnEstablished || isInEarlyData)
@@ -444,14 +438,14 @@ public class QuicheConnection : IDisposable
                             packetBuf.AsMemory(0, (int)recvCount),
                             streamFinished, cancellationToken
                             );
+
+                        stream.SetFirstRead();
                     }
                     else
                     {
-                        QuicheException.ThrowIfError((QuicheError)recvCount, "An uncaught error occured in quiche!");
+                        QuicheException.ThrowIfError((QuicheError)recvCount);
                     }
                 }
-
-                stream.SetFirstRead();
             }
             catch (QuicheException ex) when
                 (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
@@ -541,7 +535,7 @@ public class QuicheConnection : IDisposable
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (ulong)direction | (IsServer ? 0x1UL : 0x0UL);
+            streamId = (streamIdx++ << 2) | (ulong)direction | Convert.ToUInt64(IsServer);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();

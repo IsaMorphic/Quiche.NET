@@ -2,7 +2,7 @@
 {
     public class QuicheException : Exception
     {
-        private const string DEFAULT_MESSAGE = "An unexpected error was raised by Quiche!";
+        private const string DEFAULT_MESSAGE = "An uncaught exception was raised by quiche!";
 
         public QuicheError ErrorCode { get; }
 
@@ -10,6 +10,7 @@
             : base($"{message ?? DEFAULT_MESSAGE}\nCode: {errorCode}")
         {
             ErrorCode = errorCode;
+            HResult = (int)errorCode;
         }
 
         public static void ThrowIfError(QuicheError errorCode, string? message = null)
