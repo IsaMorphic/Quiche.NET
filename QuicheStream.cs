@@ -25,9 +25,9 @@ namespace Quiche.NET
 
         private bool firstReadFlag, firstWriteFlag;
 
-        public override bool CanRead => !(firstReadFlag && conn.IsStreamFinished(streamId));
+        public override bool CanRead => !conn.IsClosed && !(firstReadFlag && conn.IsStreamFinished(streamId));
 
-        public override bool CanWrite => !(firstWriteFlag && conn.IsStreamFinished(streamId));
+        public override bool CanWrite => !conn.IsClosed && !(firstWriteFlag && conn.IsStreamFinished(streamId));
 
         public override bool CanSeek => false;
 
