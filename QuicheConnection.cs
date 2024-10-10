@@ -223,6 +223,7 @@ public class QuicheConnection : IDisposable
                         }
                     }
                 }
+
                 QuicheException.ThrowIfError((QuicheError)resultOrError);
 
                 lock (info)
@@ -236,6 +237,8 @@ public class QuicheConnection : IDisposable
                     TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 100),
                     Timeout.InfiniteTimeSpan
                     );
+
+                await Task.Yield();
 
                 long streamIdOrNone;
                 bool isConnectionEstablished, isInEarlyData;
@@ -316,9 +319,6 @@ public class QuicheConnection : IDisposable
                     }
                 }
             }
-            catch (QuicheException ex) when
-                (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-            { await Task.Delay(75, cancellationToken); continue; }
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
@@ -460,9 +460,6 @@ public class QuicheConnection : IDisposable
                     }
                 }
             }
-            catch (QuicheException ex) when
-                (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-            { await Task.Delay(75, cancellationToken); continue; }
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
