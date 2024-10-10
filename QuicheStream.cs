@@ -98,19 +98,22 @@ namespace Quiche.NET
             }
             else
             {
-                int readCount = 0;
-                while (readCount < count)
+                int bytesTotal = 0;
+                while (bytesTotal < count)
                 {
                     if (recvPipe.Reader.TryRead(out ReadResult result))
                     {
-                        readCount += (int)Math.Min(result.Buffer.Length, count);
-                        result.Buffer.Slice(0, readCount).CopyTo(buffer.AsSpan(offset, readCount));
-                        recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(readCount));
+                        int bytesRead = (int)Math.Min(result.Buffer.Length, count - bytesTotal);
+
+                        result.Buffer.Slice(0, bytesRead).CopyTo(buffer.AsSpan(offset + bytesTotal, bytesRead));
+                        recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(bytesRead));
+
+                        bytesTotal += bytesRead;
                     }
                     else { Thread.Sleep(75); }
                 }
 
-                return readCount;
+                return bytesTotal;
             }
         }
 
