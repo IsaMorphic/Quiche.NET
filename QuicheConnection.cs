@@ -371,8 +371,17 @@ public class QuicheConnection : IDisposable
                     establishedTcs.TrySetResult();
                 }
 
-                ReadOnlyMemory<byte> nextPacket = ReadOnlyMemory<byte>.Empty;
-                if (recvQueue.TryDequeue(out nextPacket))
+                ReadOnlyMemory<byte> nextPacket;
+                if (!recvQueue.TryDequeue(out nextPacket) && NextTimeoutMilliseconds > 0)
+                {
+                    await Task.Delay(75, cancellationToken);
+                    continue;
+                }
+                else if (nextPacket.IsEmpty)
+                {
+                    throw new QuicheException(QuicheError.QUICHE_ERR_DONE, null);
+                }
+                else
                 {
                     nextPacket.CopyTo(packetBuf);
                 }
