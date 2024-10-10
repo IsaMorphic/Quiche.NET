@@ -427,13 +427,27 @@ public class QuicheConnection : IDisposable
                         lock (this)
                         {
                             streamIdOrNone = NativePtr->StreamReadableNext();
-                            if (streamIdOrNone < 0) { continue; }
                         }
                     }
                 }
                 else { continue; }
 
-                QuicheStream stream = GetStream((ulong)streamIdOrNone);
+                ulong streamId;
+                QuicheStream? stream;
+                if (streamIdOrNone < 0)
+                {
+                    (streamId, stream) = streamMap
+                        .Cast<KeyValuePair<ulong, QuicheStream?>>()
+                        .FirstOrDefault(x => x.Value?.CanRead ?? false);
+                }
+                else
+                {
+                    streamId = (ulong)streamIdOrNone;
+                    stream = GetStream(streamId);
+                }
+
+                if (stream is null) { continue; }
+
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
                     streamBag.Add(tcs = new());
