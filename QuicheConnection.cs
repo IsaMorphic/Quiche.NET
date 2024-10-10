@@ -461,6 +461,11 @@ public class QuicheConnection : IDisposable
                 }
             }
             catch (QuicheException ex)
+            when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+            {
+                await Task.Delay(75, cancellationToken);
+            }
+            catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
                 while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
