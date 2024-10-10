@@ -99,7 +99,7 @@ namespace Quiche.NET
             else
             {
                 int bytesTotal = 0;
-                while (bytesTotal < count)
+                while (CanRead && bytesTotal < count)
                 {
                     if (recvPipe.Reader.TryRead(out ReadResult result))
                     {
@@ -125,13 +125,17 @@ namespace Quiche.NET
             {
                 throw new NotSupportedException();
             }
-            else
+            else if (CanWrite)
             {
                 Memory<byte> memory = sendPipe.Writer.GetMemory(count);
                 buffer.AsMemory(offset, count).CopyTo(memory);
                 sendPipe.Writer.Advance(count);
 
                 sendPipe.Writer.FlushAsync();
+            }
+            else 
+            {
+                throw new EndOfStreamException("Cannot write to a closed stream.");
             }
         }
 
