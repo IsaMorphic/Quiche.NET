@@ -372,7 +372,7 @@ public class QuicheConnection : IDisposable
                 }
 
                 ReadOnlyMemory<byte> nextPacket;
-                if (!recvQueue.TryDequeue(out nextPacket) && NextTimeoutMilliseconds > 0)
+                if (!recvQueue.TryDequeue(out nextPacket) && !IsClosed)
                 {
                     await Task.Delay(75, cancellationToken);
                     continue;
