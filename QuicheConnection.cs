@@ -523,7 +523,7 @@ public class QuicheConnection : IDisposable
                     streamId = (ulong)streamIdOrNone;
                     stream = GetStream(streamId);
                 }
-                else if (isConnEstablished || isInEarlyData) 
+                else if (streamMap.Keys.Any(IsStreamReadable) && (isConnEstablished || isInEarlyData)) 
                 {
                     streamId = streamMap.Keys.First(IsStreamReadable);
                     stream = GetStream(streamId);
