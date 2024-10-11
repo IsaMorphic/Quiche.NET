@@ -485,9 +485,9 @@ public class QuicheConnection : IDisposable
     private async Task ReceiveStreamAsync(CancellationToken cancellationToken)
     {
         byte[] streamBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -556,22 +556,28 @@ public class QuicheConnection : IDisposable
                     }
                 }
             }
-        }
-        catch (QuicheException ex)
-        {
-            while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+            catch (QuicheException ex)
+                when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
-                tcs.TrySetException(ex);
+                await Task.Delay(75, cancellationToken);
+                continue;
             }
-            throw;
-        }
-        catch (OperationCanceledException)
-        {
-            while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+            catch (QuicheException ex)
             {
-                tcs.TrySetCanceled(cts.Token);
+                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    tcs.TrySetException(ex);
+                }
+                throw;
             }
-            throw;
+            catch (OperationCanceledException)
+            {
+                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    tcs.TrySetCanceled(cts.Token);
+                }
+                throw;
+            }
         }
     }
 
