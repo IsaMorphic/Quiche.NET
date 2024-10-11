@@ -98,8 +98,8 @@ namespace Quiche.NET
             }
             else
             {
-                int bytesTotal = 0;
-                while (CanRead && bytesTotal < count)
+                int bytesTotal = 0, numRetries = 50;
+                while (CanRead && bytesTotal < count && numRetries > 0)
                 {
                     if (recvPipe.Reader.TryRead(out ReadResult result))
                     {
@@ -110,10 +110,7 @@ namespace Quiche.NET
 
                         bytesTotal += bytesRead;
                     }
-                    else 
-                    {
-                        break; 
-                    }
+                    else { --numRetries; Thread.Sleep(100); }
                 }
 
                 return bytesTotal;
