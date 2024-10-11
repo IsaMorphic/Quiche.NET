@@ -636,7 +636,7 @@ public class QuicheConnection : IDisposable
             }
             else
             {
-                resultOrError = NativePtr->StreamWritable(streamId, 0);
+                resultOrError = NativePtr->StreamWritable(streamId, 1024);
             }
         }
 
