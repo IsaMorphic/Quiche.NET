@@ -294,7 +294,7 @@ public class QuicheConnection : IDisposable
                 if (streamIdOrNone < 0)
                 {
                     ulong? streamIdOrNull = 
-                        sendQueue.Keys.Cast<ulong?>()
+                        streamMap.Keys.Cast<ulong?>()
                         .FirstOrDefault(x => x.HasValue ? 
                             IsStreamFinished(x.Value) : false
                             );
