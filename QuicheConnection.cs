@@ -533,8 +533,9 @@ public class QuicheConnection : IDisposable
                             fixed (byte* bufPtr = streamBuf)
                             {
                                 errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr, (nuint)streamBuf.Length,
+                                recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr, (nuint)streamBuf.Length,
                                     (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
+                                Console.WriteLine($"Received {recvCount} bytes from stream #{streamId} with error code: {errorCode}");
                             }
                         }
                     }
