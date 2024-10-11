@@ -15,20 +15,21 @@ namespace Quiche.NET
         public enum Direction
         {
             Bidirectional = 0x0,
-            Unidirectional = 0x2
+            Unidirectional = 0x2,
         }
 
+        private const int MAX_READ_RETRIES = 50;
+
         private readonly Pipe? recvPipe, sendPipe;
-        private readonly Stream? recvStream, sendStream;
 
         private readonly QuicheConnection conn;
         private readonly ulong streamId;
 
         private bool firstReadFlag, firstWriteFlag;
 
-        public override bool CanRead => !(firstReadFlag && conn.IsStreamFinished(streamId));
+        public override bool CanRead => !conn.IsClosed && !(firstReadFlag && conn.IsStreamFinished(streamId));
 
-        public override bool CanWrite => !(firstWriteFlag && conn.IsStreamFinished(streamId));
+        public override bool CanWrite => !conn.IsClosed && !(firstWriteFlag && conn.IsStreamFinished(streamId));
 
         public override bool CanSeek => false;
 
@@ -45,50 +46,42 @@ namespace Quiche.NET
             this.conn = conn;
             this.streamId = streamId;
 
-            bool isPeerInitiated = ((streamId & 1) == 1) != conn.IsServer;
-            bool isBidirectional = (streamId & 2) == 2;
+            bool isPeerInitiated = ((streamId & 1) == 0) ^ conn.IsServer;
+            bool isBidirectional = (streamId & 2) == 0;
 
             if (isPeerInitiated || isBidirectional)
             {
                 recvPipe = new Pipe();
-                recvStream = recvPipe.Reader.AsStream(leaveOpen: true);
             }
 
             if (!isPeerInitiated || isBidirectional)
             {
                 sendPipe = new Pipe();
-                sendStream = sendPipe.Writer.AsStream(leaveOpen: true);
             }
         }
 
         internal async Task ReceiveDataAsync(ReadOnlyMemory<byte> bufIn, bool finished, CancellationToken cancellationToken)
         {
-            if (recvPipe is null || recvStream is null)
+            if (recvPipe is null)
             {
                 throw new NotSupportedException();
             }
             else
             {
-                lock (recvPipe)
-                {
-                    Memory<byte> memory = recvPipe.Writer.GetMemory(QuicheLibrary.MAX_BUFFER_LEN);
-                    bufIn.CopyTo(memory);
-                    recvPipe.Writer.Advance(bufIn.Length);
-                }
+                Memory<byte> memory = recvPipe.Writer.GetMemory(bufIn.Length);
+                bufIn.CopyTo(memory); recvPipe.Writer.Advance(bufIn.Length);
 
                 await recvPipe.Writer.FlushAsync(cancellationToken);
 
                 if (finished)
                 {
-                    recvPipe.Writer.Complete();
+                    await recvPipe.Writer.CompleteAsync();
                 }
             }
         }
 
         public override void Flush()
         {
-            sendStream?.Flush();
-
             if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
             {
                 conn.sendQueue.AddOrUpdate(streamId,
@@ -101,16 +94,28 @@ namespace Quiche.NET
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if (recvPipe is null || recvStream is null)
+            if (recvPipe is null)
             {
                 throw new NotSupportedException();
             }
             else
             {
-                lock (recvPipe)
+                int bytesTotal = 0, numRetries = MAX_READ_RETRIES;
+                while (CanRead && bytesTotal < count && numRetries > 0)
                 {
-                    return recvStream.Read(buffer, offset, count);
+                    if (recvPipe.Reader.TryRead(out ReadResult result))
+                    {
+                        int bytesRead = (int)Math.Min(result.Buffer.Length, count - bytesTotal);
+
+                        result.Buffer.Slice(result.Buffer.Start, bytesRead).CopyTo(buffer.AsSpan(offset + bytesTotal, bytesRead));
+                        recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(bytesRead));
+
+                        bytesTotal += bytesRead;
+                    }
+                    else { --numRetries; Thread.Sleep(100); }
                 }
+
+                return bytesTotal;
             }
         }
 
@@ -118,13 +123,21 @@ namespace Quiche.NET
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if (sendPipe is null || sendStream is null)
+            if (sendPipe is null)
             {
                 throw new NotSupportedException();
             }
-            else
+            else if (CanWrite)
             {
-                sendStream.Write(buffer, offset, count);
+                Memory<byte> memory = sendPipe.Writer.GetMemory(count);
+                buffer.AsMemory(offset, count).CopyTo(memory);
+                sendPipe.Writer.Advance(count);
+
+                sendPipe.Writer.FlushAsync();
+            }
+            else 
+            {
+                throw new EndOfStreamException("Cannot write to a closed stream.");
             }
         }
 
@@ -140,22 +153,40 @@ namespace Quiche.NET
         {
             base.Close();
 
-            recvPipe?.Writer.Complete();
-            sendPipe?.Writer.Complete();
-
             try
             {
-                if (CanRead)
+                if (recvPipe is not null && sendPipe is not null)
                 {
+                    recvPipe.Writer.Complete();
+
+                    QuicheException.ThrowIfError((QuicheError)
+                        conn.NativePtr->StreamShutdown(streamId,
+                        (int)Shutdown.Read, 0x00),
+                        $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
+                        );
+
+                    sendPipe.Writer.Complete();
+
+                    QuicheException.ThrowIfError((QuicheError)
+                        conn.NativePtr->StreamShutdown(streamId,
+                        (int)Shutdown.Write, 0x00),
+                        $"Failed to shutdown writing side of stream! (ID: {streamId:X16})"
+                        );
+                }
+                else if (recvPipe is not null)
+                {
+                    recvPipe.Writer.Complete();
+
                     QuicheException.ThrowIfError((QuicheError)
                         conn.NativePtr->StreamShutdown(streamId,
                         (int)Shutdown.Read, 0x00),
                         $"Failed to shutdown reading side of stream! (ID: {streamId:X16})"
                         );
                 }
-
-                if (CanWrite)
+                else if (sendPipe is not null)
                 {
+                    sendPipe.Writer.Complete();
+
                     QuicheException.ThrowIfError((QuicheError)
                         conn.NativePtr->StreamShutdown(streamId,
                         (int)Shutdown.Write, 0x00),
@@ -166,17 +197,6 @@ namespace Quiche.NET
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             { }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            base.Dispose(disposing);
-
-            if (disposing)
-            {
-                recvStream?.Dispose();
-                sendStream?.Dispose();
-            }
         }
     }
 }

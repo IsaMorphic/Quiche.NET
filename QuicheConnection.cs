@@ -83,8 +83,10 @@ public class QuicheConnection : IDisposable
         }
     }
 
+    private const int MAX_STREAM_SEND_RETRIES = 10;
+
     private readonly Task? listenTask;
-    private readonly Task recvTask, sendTask;
+    private readonly Task recvTask, recvStreamTask, sendTask, sendStreamTask;
     private readonly CancellationTokenSource cts;
 
     private readonly TaskCompletionSource establishedTcs;
@@ -104,7 +106,7 @@ public class QuicheConnection : IDisposable
 
     public Task ConnectionEstablished => establishedTcs.Task;
 
-    public unsafe bool IsClosed
+    internal unsafe bool IsClosed
     {
         get
         {
@@ -115,13 +117,24 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    public unsafe bool IsServer
+    internal unsafe bool IsServer
     {
         get
         {
             lock (this)
             {
                 return NativePtr is not null && NativePtr->IsServer();
+            }
+        }
+    }
+
+    internal unsafe int NextTimeoutMilliseconds
+    {
+        get
+        {
+            lock (this)
+            {
+                return NativePtr is null ? 0 : (int)NativePtr->TimeoutAsMillis();
             }
         }
     }
@@ -148,6 +161,9 @@ public class QuicheConnection : IDisposable
 
         recvTask = Task.Run(() => ReceiveAsync(cts.Token));
         sendTask = Task.Run(() => SendAsync(cts.Token));
+
+        recvStreamTask = Task.Run(() => ReceiveStreamAsync(cts.Token));
+        sendStreamTask = Task.Run(() => SendStreamAsync(cts.Token));
 
         if (initialData.IsEmpty)
         {
@@ -187,7 +203,7 @@ public class QuicheConnection : IDisposable
 
     private async Task SendAsync(CancellationToken cancellationToken)
     {
-        byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+        byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
 
         SendScheduleInfo info = new() { SendBuffer = packetBuf };
         Timer timer = new Timer(SendPacket, info, Timeout.Infinite, Timeout.Infinite);
@@ -197,7 +213,7 @@ public class QuicheConnection : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                long resultOrError = long.MaxValue;
+                long resultOrError;
                 SendInfo sendInfo = default;
                 unsafe
                 {
@@ -212,7 +228,8 @@ public class QuicheConnection : IDisposable
                         }
                     }
                 }
-                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
+
+                QuicheException.ThrowIfError((QuicheError)resultOrError);
 
                 lock (info)
                 {
@@ -225,6 +242,61 @@ public class QuicheConnection : IDisposable
                     TimeSpan.FromTicks(sendInfo.at.tv_nsec.Value / 100),
                     Timeout.InfiniteTimeSpan
                     );
+            }
+            catch (QuicheException ex)
+            when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+            {
+                await Task.Delay(150, cancellationToken);
+                continue;
+            }
+            catch (QuicheException ex)
+            {
+                establishedTcs.TrySetException(ex);
+                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    tcs.TrySetException(ex);
+                }
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                establishedTcs.TrySetCanceled(cts.Token);
+                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    tcs.TrySetCanceled(cts.Token);
+                }
+                throw;
+            }
+        }
+    }
+
+    private async Task SendStreamAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                ulong streamId;
+                QuicheStream? stream;
+                if (sendQueue.Any())
+                {
+                    streamId = sendQueue.Keys.First();
+                    stream = GetStream(streamId);
+                }
+                else
+                {
+                    ulong? streamIdOrNull =
+                        streamMap.Keys.Cast<ulong?>()
+                        .FirstOrDefault(x => x.HasValue ?
+                            IsStreamFinished(x.Value) : false
+                            );
+
+                    streamId = streamIdOrNull.GetValueOrDefault();
+                    stream = streamIdOrNull is null ?
+                        null : GetStream(streamId);
+                }
 
                 bool isConnectionEstablished, isInEarlyData;
                 unsafe
@@ -236,69 +308,66 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                if (isConnectionEstablished || isInEarlyData)
+                if (stream is null || (!isConnectionEstablished && !isInEarlyData))
                 {
-                    foreach (var (streamId, _) in sendQueue.ToArray())
+                    await Task.Delay(150, cancellationToken);
+                    continue;
+                }
+
+                byte[]? streamBuf;
+                int numRetries = 0;
+                while (!sendQueue.TryRemove(streamId, out streamBuf) && numRetries < MAX_STREAM_SEND_RETRIES)
+                {
+                    stream.Flush();
+                    if (numRetries++ > 0)
                     {
-                        if(!sendQueue.TryRemove(streamId, out byte[]? streamBuf)) continue;
-
-                        long errorCode;
-
-                        long bytesSent = 0;
-                        Lazy<bool> hasNotSentAllBytes;
-
-                        QuicheStream stream = GetStream(streamId);
-                        do
-                        {
-                            unsafe
-                            {
-                                lock (this)
-                                {
-                                    fixed (byte* bufPtr = streamBuf)
-                                    {
-                                        if (stream.CanWrite)
-                                        {
-                                            errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                            resultOrError = (long)NativePtr->StreamSend(streamId,
-                                                bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
-                                                false, (ulong*)Unsafe.AsPointer(ref errorCode)
-                                                );
-                                        }
-                                        else
-                                        {
-                                            errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                            resultOrError = (long)NativePtr->StreamSend(
-                                                streamId, bufPtr, nuint.Zero, true,
-                                                (ulong*)Unsafe.AsPointer(ref errorCode)
-                                                );
-                                        }
-                                    }
-                                }
-                            }
-
-                            hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < streamBuf.Length);
-                        } while (resultOrError >= 0 && hasNotSentAllBytes.Value);
-
-                        if (hasNotSentAllBytes.IsValueCreated && hasNotSentAllBytes.Value)
-                        {
-                            // requeue the data if it can't be sent right now!
-                            sendQueue.AddOrUpdate(streamId,
-                                key => streamBuf[(int)bytesSent..],
-                                (key, buf) => [.. streamBuf[(int)bytesSent..], .. buf]
-                                );
-                        }
-                        else if (!hasNotSentAllBytes.IsValueCreated)
-                        {
-                            QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
-                        }
-
-                        stream.SetFirstWrite();
+                        await Task.Delay(100, cancellationToken);
                     }
                 }
+
+                if (streamBuf is null)
+                {
+                    await Task.Delay(150, cancellationToken);
+                    continue;
+                }
+
+                long resultOrError, errorCode, bytesSent = 0;
+                Lazy<bool> hasNotSentAllBytes;
+                do
+                {
+                    unsafe
+                    {
+                        lock (this)
+                        {
+                            fixed (byte* bufPtr = streamBuf)
+                            {
+                                errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                resultOrError = (long)NativePtr->StreamSend(streamId,
+                                    bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
+                                    false, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                    );
+                            }
+                        }
+                    }
+
+                    hasNotSentAllBytes = new(() => (bytesSent += resultOrError) < streamBuf.Length);
+                } while (resultOrError >= 0 && hasNotSentAllBytes.Value);
+
+                sendQueue.AddOrUpdate(streamId,
+                    key => streamBuf[(int)bytesSent..],
+                    (key, buf) => [.. streamBuf[(int)bytesSent..], .. buf]
+                    );
+
+                QuicheException.ThrowIfError((QuicheError)resultOrError);
+
+                stream.SetFirstWrite();
             }
-            catch (QuicheException ex) when
-                (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-            { await Task.Delay(75, cancellationToken); continue; }
+            catch (QuicheException ex)
+            when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+            {
+                await Task.Delay(75, cancellationToken);
+                continue;
+            }
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
@@ -322,7 +391,7 @@ public class QuicheConnection : IDisposable
 
     private async Task ReceiveAsync(CancellationToken cancellationToken)
     {
-        byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+        byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
         while (!cancellationToken.IsCancellationRequested)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -346,12 +415,19 @@ public class QuicheConnection : IDisposable
                 }
 
                 ReadOnlyMemory<byte> nextPacket;
-                if (!recvQueue.TryDequeue(out nextPacket))
+                if (!recvQueue.TryDequeue(out nextPacket) && !IsClosed)
                 {
-                    await Task.Delay(75, cancellationToken);
+                    await Task.Delay(150, cancellationToken);
                     continue;
                 }
-                nextPacket.CopyTo(packetBuf);
+                else if (IsClosed)
+                {
+                    throw new QuicheException(QuicheError.QUICHE_ERR_DONE, "Connection timed out from inactivity.");
+                }
+                else
+                {
+                    nextPacket.CopyTo(packetBuf);
+                }
 
                 long resultOrError;
                 unsafe
@@ -384,65 +460,8 @@ public class QuicheConnection : IDisposable
                     }
                 }
 
-                QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
-
-                long streamIdOrNone;
-                if (isConnEstablished || isInEarlyData)
-                {
-                    unsafe
-                    {
-                        lock (this)
-                        {
-                            streamIdOrNone = NativePtr->StreamReadableNext();
-                            if (streamIdOrNone < 0) { continue; }
-                        }
-                    }
-                }
-                else { continue; }
-
-                QuicheStream stream = GetStream((ulong)streamIdOrNone);
-                if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    streamBag.Add(tcs = new());
-                }
-                tcs.TrySetResult(stream);
-
-                bool streamFinished = false;
-                long recvCount = long.MaxValue;
-                while (!streamFinished && recvCount > 0)
-                {
-                    long errorCode;
-                    unsafe
-                    {
-                        lock (this)
-                        {
-                            fixed (byte* bufPtr = packetBuf)
-                            {
-                                errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr, (nuint)packetBuf.Length,
-                                    (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
-                            }
-                        }
-                    }
-
-                    if (recvCount > 0 && stream.CanRead)
-                    {
-                        await stream.ReceiveDataAsync(
-                            packetBuf.AsMemory(0, (int)recvCount),
-                            streamFinished, cancellationToken
-                            );
-                    }
-                    else
-                    {
-                        QuicheException.ThrowIfError((QuicheError)resultOrError, "An uncaught error occured in quiche!");
-                    }
-                }
-
-                stream.SetFirstRead();
+                QuicheException.ThrowIfError((QuicheError)resultOrError);
             }
-            catch (QuicheException ex) when
-                (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
-            { await Task.Delay(75, cancellationToken); continue; }
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
@@ -464,13 +483,112 @@ public class QuicheConnection : IDisposable
         }
     }
 
+    private async Task ReceiveStreamAsync(CancellationToken cancellationToken)
+    {
+        byte[] streamBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                long streamIdOrNone;
+                bool isConnEstablished, isInEarlyData;
+                unsafe
+                {
+                    lock (this)
+                    {
+                        streamIdOrNone = NativePtr->StreamReadableNext();
+
+                        isConnEstablished = NativePtr->IsEstablished();
+                        isInEarlyData = NativePtr->IsInEarlyData();
+                    }
+                }
+
+                ulong streamId;
+                QuicheStream stream;
+                if (streamIdOrNone >= 0 && (isConnEstablished || isInEarlyData))
+                {
+                    streamId = (ulong)streamIdOrNone;
+                    stream = GetStream(streamId);
+                }
+                else
+                {
+                    await Task.Delay(150, cancellationToken);
+                    continue;
+                }
+
+                if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    streamBag.Add(tcs = new());
+                }
+                tcs.TrySetResult(stream);
+
+                bool streamFinished = false;
+                long recvCount = long.MaxValue;
+                while (!streamFinished && recvCount > 0)
+                {
+                    long errorCode;
+                    unsafe
+                    {
+                        lock (this)
+                        {
+                            fixed (byte* bufPtr = streamBuf)
+                            {
+                                errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr, (nuint)streamBuf.Length,
+                                    (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
+                            }
+                        }
+                    }
+
+                    if (recvCount > 0)
+                    {
+                        await stream.ReceiveDataAsync(
+                            streamBuf.AsMemory(0, (int)recvCount),
+                            streamFinished, cancellationToken
+                            );
+
+                        stream.SetFirstRead();
+                    }
+                    else
+                    {
+                        QuicheException.ThrowIfError((QuicheError)recvCount);
+                    }
+                }
+            }
+            catch (QuicheException ex)
+                when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
+            {
+                await Task.Delay(75, cancellationToken);
+                continue;
+            }
+            catch (QuicheException ex)
+            {
+                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    tcs.TrySetException(ex);
+                }
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
+                {
+                    tcs.TrySetCanceled(cts.Token);
+                }
+                throw;
+            }
+        }
+    }
+
     private async Task ListenAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            byte[] packetBuf = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+            byte[] packetBuf = new byte[QuicheLibrary.MAX_DATAGRAM_LEN];
             SocketReceiveFromResult result = await socket.ReceiveFromAsync(
                 packetBuf, remoteEndPoint, cancellationToken);
             recvQueue.Enqueue(packetBuf.AsMemory(0, result.ReceivedBytes));
@@ -528,7 +646,7 @@ public class QuicheConnection : IDisposable
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (ulong)direction | (IsServer ? 0x1UL : 0x0UL);
+            streamId = (streamIdx++ << 2) | (ulong)direction | Convert.ToUInt64(IsServer);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
@@ -568,6 +686,7 @@ public class QuicheConnection : IDisposable
                 {
                     cts.Cancel();
                     Task.WhenAll(recvTask, sendTask,
+                        recvStreamTask, sendStreamTask,
                         listenTask ?? Task.CompletedTask
                         ).Wait();
                 }
