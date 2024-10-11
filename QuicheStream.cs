@@ -112,7 +112,7 @@ namespace Quiche.NET
 
                         bytesTotal += bytesRead;
                     }
-                    else { --numRetries; Thread.Sleep(100); }
+                    else { Thread.Sleep(100); }
                 }
 
                 return bytesTotal;
