@@ -246,7 +246,7 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
-                await Task.Delay(150, cancellationToken);
+                await Task.Delay(75, cancellationToken);
                 continue;
             }
             catch (QuicheException ex)
@@ -315,7 +315,7 @@ public class QuicheConnection : IDisposable
                         str.Flush();
                     }
                     
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
 
@@ -323,7 +323,7 @@ public class QuicheConnection : IDisposable
                 {
                     stream.Flush();
 
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
 
@@ -342,7 +342,6 @@ public class QuicheConnection : IDisposable
                                     bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
                                     false, (ulong*)Unsafe.AsPointer(ref errorCode)
                                     );
-                                Console.WriteLine($"Sent {resultOrError} bytes to stream #{streamId} with error code: {errorCode}");
                             }
                         }
                     }
@@ -362,7 +361,7 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
-                await Task.Delay(150, cancellationToken);
+                await Task.Delay(75, cancellationToken);
                 continue;
             }
             catch (QuicheException ex)
@@ -414,7 +413,7 @@ public class QuicheConnection : IDisposable
                 ReadOnlyMemory<byte> nextPacket;
                 if (!recvQueue.TryDequeue(out nextPacket) && !IsClosed)
                 {
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
                 else if (IsClosed)
@@ -511,7 +510,7 @@ public class QuicheConnection : IDisposable
                 }
                 else
                 {
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
 
@@ -535,7 +534,6 @@ public class QuicheConnection : IDisposable
                                 errorCode = (long)QuicheError.QUICHE_ERR_NONE;
                                 recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr, (nuint)streamBuf.Length,
                                     (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
-                                Console.WriteLine($"Received {recvCount} bytes from stream #{streamId} with error code: {errorCode}");
                             }
                         }
                     }
