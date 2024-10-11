@@ -523,9 +523,9 @@ public class QuicheConnection : IDisposable
                     streamId = (ulong)streamIdOrNone;
                     stream = GetStream(streamId);
                 }
-                else if (streamMap.Keys.Any(IsStreamReadable) && (isConnEstablished || isInEarlyData)) 
+                else if (streamMap.Keys.Any() && (isConnEstablished || isInEarlyData)) 
                 {
-                    streamId = streamMap.Keys.First(IsStreamReadable);
+                    streamId = streamMap.Keys.First();
                     stream = GetStream(streamId);
                 }
                 else
