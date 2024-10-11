@@ -443,7 +443,7 @@ public class QuicheConnection : IDisposable
 
                 bool streamFinished = false;
                 long recvCount = long.MaxValue;
-                while (!streamFinished && recvCount >= 0)
+                while (!streamFinished && recvCount > 0)
                 {
                     long errorCode;
                     unsafe
@@ -459,7 +459,7 @@ public class QuicheConnection : IDisposable
                         }
                     }
 
-                    if (recvCount >= 0 && stream.CanRead)
+                    if (recvCount > 0)
                     {
                         await stream.ReceiveDataAsync(
                             packetBuf.AsMemory(0, (int)recvCount),
