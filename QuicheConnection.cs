@@ -310,6 +310,11 @@ public class QuicheConnection : IDisposable
 
                 if (stream is null || (!isConnectionEstablished && !isInEarlyData))
                 {
+                    foreach (var str in streamMap.Values.Where(x => x.CanWrite))
+                    {
+                        str.Flush();
+                    }
+                    
                     await Task.Delay(150, cancellationToken);
                     continue;
                 }
