@@ -246,7 +246,7 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
-                await Task.Delay(75, cancellationToken);
+                await Task.Delay(150, cancellationToken);
                 continue;
             }
             catch (QuicheException ex)
@@ -280,9 +280,9 @@ public class QuicheConnection : IDisposable
 
                 ulong streamId;
                 QuicheStream? stream;
-                if (streamMap.Keys.Any(IsStreamWritable))
+                if (sendQueue.Any())
                 {
-                    streamId = streamMap.Keys.First(IsStreamWritable);
+                    streamId = sendQueue.Keys.First();
                     stream = GetStream(streamId);
                 }
                 else
@@ -327,7 +327,7 @@ public class QuicheConnection : IDisposable
 
                 if (streamBuf is null)
                 {
-                    await Task.Delay(75, cancellationToken);
+                    await Task.Delay(150, cancellationToken);
                     continue;
                 }
 
@@ -428,7 +428,7 @@ public class QuicheConnection : IDisposable
                 ReadOnlyMemory<byte> nextPacket;
                 if (!recvQueue.TryDequeue(out nextPacket) && !IsClosed)
                 {
-                    await Task.Delay(75, cancellationToken);
+                    await Task.Delay(150, cancellationToken);
                     continue;
                 }
                 else if (IsClosed)
@@ -525,7 +525,8 @@ public class QuicheConnection : IDisposable
                 }
                 else
                 {
-                    await Task.Delay(75, cancellationToken);
+                    Console.WriteLine("Didn't find stream for reading.");
+                    await Task.Delay(150, cancellationToken);
                     continue;
                 }
 
@@ -636,7 +637,7 @@ public class QuicheConnection : IDisposable
             }
             else
             {
-                resultOrError = NativePtr->StreamWritable(streamId, 1024);
+                resultOrError = NativePtr->StreamWritable(streamId, 0);
             }
         }
 
