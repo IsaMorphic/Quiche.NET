@@ -523,18 +523,12 @@ public class QuicheConnection : IDisposable
                     streamId = (ulong)streamIdOrNone;
                     stream = GetStream(streamId);
                 }
-                else if (streamMap.Keys.Any() && (isConnEstablished || isInEarlyData)) 
-                {
-                    streamId = streamMap.Keys.First();
-                    stream = GetStream(streamId);
-                }
                 else
                 {
                     await Task.Delay(150, cancellationToken);
                     continue;
                 }
 
-                Console.WriteLine($"Found stream for reading: {streamId}");
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
                     streamBag.Add(tcs = new());

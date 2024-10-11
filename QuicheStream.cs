@@ -14,8 +14,8 @@ namespace Quiche.NET
 
         public enum Direction
         {
-            Bidirectional = 0x0,
-            Unidirectional = 0x2
+            Unidirectional = 0x0,
+            Bidirectional = 0x2
         }
 
         private const int MAX_READ_RETRIES = 50;
