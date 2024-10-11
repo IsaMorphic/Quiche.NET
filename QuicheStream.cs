@@ -105,7 +105,7 @@ namespace Quiche.NET
                     {
                         int bytesRead = (int)Math.Min(result.Buffer.Length, count - bytesTotal);
 
-                        result.Buffer.Slice(0, bytesRead).CopyTo(buffer.AsSpan(offset + bytesTotal, bytesRead));
+                        result.Buffer.Slice(result.Buffer.Start, bytesRead).CopyTo(buffer.AsSpan(offset + bytesTotal, bytesRead));
                         recvPipe.Reader.AdvanceTo(result.Buffer.GetPosition(bytesRead));
 
                         bytesTotal += bytesRead;
