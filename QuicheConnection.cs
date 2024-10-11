@@ -290,18 +290,26 @@ public class QuicheConnection : IDisposable
                 }
 
                 ulong streamId;
+                QuicheStream? stream;
                 if (streamIdOrNone < 0)
                 {
-                    streamId = sendQueue.Keys.First(IsStreamFinished);
+                    ulong? streamIdOrNull = 
+                        sendQueue.Keys.Cast<ulong?>()
+                        .FirstOrDefault(x => x.HasValue ? 
+                            IsStreamFinished(x.Value) : false
+                            );
+
+                    streamId = streamIdOrNull.GetValueOrDefault();
+                    stream = streamIdOrNull is null ? 
+                        null : GetStream(streamId);
                 }
                 else
                 {
                     streamId = (ulong)streamIdOrNone;
+                    stream = GetStream(streamId);
                 }
 
-                QuicheStream stream = GetStream(streamId);
-
-                if (isConnectionEstablished || isInEarlyData)
+                if (stream is not null && (isConnectionEstablished || isInEarlyData))
                 {
                     if (!sendQueue.TryRemove(streamId, out byte[]? streamBuf))
                     {
@@ -498,14 +506,15 @@ public class QuicheConnection : IDisposable
 
                 ulong streamId;
                 QuicheStream stream;
-                if (!isConnEstablished && !isInEarlyData && streamIdOrNone < 0)
-                {
-                    continue;
-                }
-                else
+                if (streamIdOrNone >= 0 && (isConnEstablished || isInEarlyData))
                 {
                     streamId = (ulong)streamIdOrNone;
                     stream = GetStream(streamId);
+                }
+                else
+                {
+                    await Task.Delay(75, cancellationToken);
+                    continue;
                 }
 
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
