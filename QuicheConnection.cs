@@ -310,7 +310,7 @@ public class QuicheConnection : IDisposable
 
                 if (stream is null || (!isConnectionEstablished && !isInEarlyData))
                 {
-                    foreach (var str in streamMap.Values.Where(x => x.CanWrite))
+                    foreach (var str in streamMap.Values)
                     {
                         str.Flush();
                     }
@@ -319,19 +319,10 @@ public class QuicheConnection : IDisposable
                     continue;
                 }
 
-                byte[]? streamBuf;
-                int numRetries = 0;
-                while (!sendQueue.TryRemove(streamId, out streamBuf) && numRetries < MAX_STREAM_SEND_RETRIES)
+                if (!sendQueue.TryRemove(streamId, out byte[]? streamBuf))
                 {
                     stream.Flush();
-                    if (numRetries++ > 0)
-                    {
-                        await Task.Delay(100, cancellationToken);
-                    }
-                }
 
-                if (streamBuf is null)
-                {
                     await Task.Delay(150, cancellationToken);
                     continue;
                 }
@@ -370,7 +361,7 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
-                await Task.Delay(75, cancellationToken);
+                await Task.Delay(150, cancellationToken);
                 continue;
             }
             catch (QuicheException ex)
