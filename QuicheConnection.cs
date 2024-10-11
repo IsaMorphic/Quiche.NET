@@ -520,8 +520,12 @@ public class QuicheConnection : IDisposable
                 QuicheStream stream;
                 if (streamIdOrNone >= 0 && (isConnEstablished || isInEarlyData))
                 {
-                    Console.WriteLine($"Found stream for reading: {streamIdOrNone}");
                     streamId = (ulong)streamIdOrNone;
+                    stream = GetStream(streamId);
+                }
+                else if (isConnEstablished || isInEarlyData) 
+                {
+                    streamId = streamMap.Keys.First(IsStreamReadable);
                     stream = GetStream(streamId);
                 }
                 else
@@ -530,6 +534,7 @@ public class QuicheConnection : IDisposable
                     continue;
                 }
 
+                Console.WriteLine($"Found stream for reading: {streamId}");
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
                     streamBag.Add(tcs = new());
