@@ -646,7 +646,7 @@ public class QuicheConnection : IDisposable
         do
         {
             cancellationToken.ThrowIfCancellationRequested();
-            streamId = (streamIdx++ << 2) | (ulong)direction | Convert.ToUInt64(IsServer);
+            streamId = (++streamIdx << 2) | (ulong)direction | Convert.ToUInt64(IsServer);
             if (streamMap.ContainsKey(streamId))
             {
                 await Task.Yield();
