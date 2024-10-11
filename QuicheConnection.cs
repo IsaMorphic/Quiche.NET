@@ -520,12 +520,12 @@ public class QuicheConnection : IDisposable
                 QuicheStream stream;
                 if (streamIdOrNone >= 0 && (isConnEstablished || isInEarlyData))
                 {
+                    Console.WriteLine($"Found stream for reading: {streamIdOrNone}");
                     streamId = (ulong)streamIdOrNone;
                     stream = GetStream(streamId);
                 }
                 else
                 {
-                    Console.WriteLine("Didn't find stream for reading.");
                     await Task.Delay(150, cancellationToken);
                     continue;
                 }
