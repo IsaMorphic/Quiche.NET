@@ -18,7 +18,7 @@ namespace Quiche.NET
             Unidirectional = 0x2
         }
 
-        private const int MAX_READ_RETRIES = 50;
+        private const int MAX_READ_RETRIES = 1000;
 
         private readonly Pipe? recvPipe, sendPipe;
 
