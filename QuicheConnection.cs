@@ -319,7 +319,7 @@ public class QuicheConnection : IDisposable
                     continue;
                 }
 
-                if (!sendQueue.TryRemove(streamId, out byte[]? streamBuf))
+                if (!sendQueue.TryRemove(streamId, out byte[]? streamBuf) || streamBuf.Length == 0)
                 {
                     stream.Flush();
 
@@ -342,6 +342,7 @@ public class QuicheConnection : IDisposable
                                     bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
                                     false, (ulong*)Unsafe.AsPointer(ref errorCode)
                                     );
+                                Console.WriteLine($"Sent {resultOrError} bytes to stream #{streamId} with error code: {errorCode}");
                             }
                         }
                     }
