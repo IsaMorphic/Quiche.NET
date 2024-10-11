@@ -18,6 +18,8 @@ namespace Quiche.NET
             Unidirectional = 0x2,
         }
 
+        private const int MAX_READ_RETRIES = 30;
+
         private readonly Pipe? recvPipe, sendPipe;
 
         private readonly QuicheConnection conn;
@@ -98,8 +100,8 @@ namespace Quiche.NET
             }
             else
             {
-                int bytesTotal = 0;
-                while (CanRead && bytesTotal < count)
+                int bytesTotal = 0, numRetries = MAX_READ_RETRIES;
+                while (CanRead && bytesTotal < count && numRetries > 0)
                 {
                     if (recvPipe.Reader.TryRead(out ReadResult result))
                     {
@@ -110,7 +112,7 @@ namespace Quiche.NET
 
                         bytesTotal += bytesRead;
                     }
-                    else { Thread.Sleep(75); }
+                    else { --numRetries; Thread.Sleep(1000); }
                 }
 
                 return bytesTotal;
