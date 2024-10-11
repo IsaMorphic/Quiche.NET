@@ -278,22 +278,14 @@ public class QuicheConnection : IDisposable
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                long streamIdOrNone;
-                bool isConnectionEstablished, isInEarlyData;
-                unsafe
-                {
-                    lock (this)
-                    {
-                        streamIdOrNone = NativePtr->StreamWritableNext();
-
-                        isConnectionEstablished = NativePtr->IsEstablished();
-                        isInEarlyData = NativePtr->IsInEarlyData();
-                    }
-                }
-
                 ulong streamId;
                 QuicheStream? stream;
-                if (streamIdOrNone < 0)
+                if (streamMap.Keys.Any(IsStreamWritable))
+                {
+                    streamId = streamMap.Keys.First(IsStreamWritable);
+                    stream = GetStream(streamId);
+                }
+                else
                 {
                     ulong? streamIdOrNull =
                         streamMap.Keys.Cast<ulong?>()
@@ -305,10 +297,15 @@ public class QuicheConnection : IDisposable
                     stream = streamIdOrNull is null ?
                         null : GetStream(streamId);
                 }
-                else
+
+                bool isConnectionEstablished, isInEarlyData;
+                unsafe
                 {
-                    streamId = (ulong)streamIdOrNone;
-                    stream = GetStream(streamId);
+                    lock (this)
+                    {
+                        isConnectionEstablished = NativePtr->IsEstablished();
+                        isInEarlyData = NativePtr->IsInEarlyData();
+                    }
                 }
 
                 if (stream is null || (!isConnectionEstablished && !isInEarlyData))
