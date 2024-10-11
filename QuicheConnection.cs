@@ -310,7 +310,7 @@ public class QuicheConnection : IDisposable
 
                 if (stream is null || (!isConnectionEstablished && !isInEarlyData))
                 {
-                    await Task.Delay(75, cancellationToken);
+                    await Task.Delay(150, cancellationToken);
                     continue;
                 }
 
@@ -341,22 +341,11 @@ public class QuicheConnection : IDisposable
                         {
                             fixed (byte* bufPtr = streamBuf)
                             {
-                                if (stream.CanWrite)
-                                {
-                                    errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                    resultOrError = (long)NativePtr->StreamSend(streamId,
-                                        bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
-                                        false, (ulong*)Unsafe.AsPointer(ref errorCode)
-                                        );
-                                }
-                                else
-                                {
-                                    errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                    resultOrError = (long)NativePtr->StreamSend(
-                                        streamId, bufPtr, nuint.Zero, true,
-                                        (ulong*)Unsafe.AsPointer(ref errorCode)
-                                        );
-                                }
+                                errorCode = (long)QuicheError.QUICHE_ERR_NONE;
+                                resultOrError = (long)NativePtr->StreamSend(streamId,
+                                    bufPtr + bytesSent, (nuint)(streamBuf.Length - bytesSent),
+                                    false, (ulong*)Unsafe.AsPointer(ref errorCode)
+                                    );
                             }
                         }
                     }

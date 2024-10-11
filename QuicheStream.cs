@@ -14,8 +14,8 @@ namespace Quiche.NET
 
         public enum Direction
         {
-            Unidirectional = 0x0,
-            Bidirectional = 0x2
+            Bidirectional = 0x0,
+            Unidirectional = 0x2,
         }
 
         private const int MAX_READ_RETRIES = 50;
@@ -47,7 +47,7 @@ namespace Quiche.NET
             this.streamId = streamId;
 
             bool isPeerInitiated = ((streamId & 1) == 0) ^ conn.IsServer;
-            bool isBidirectional = (streamId & 2) != 0;
+            bool isBidirectional = (streamId & 2) == 0;
 
             if (isPeerInitiated || isBidirectional)
             {
