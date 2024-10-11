@@ -427,26 +427,13 @@ public class QuicheConnection : IDisposable
                         lock (this)
                         {
                             streamIdOrNone = NativePtr->StreamReadableNext();
+                            if (streamIdOrNone < 0) { continue; }
                         }
                     }
                 }
                 else { continue; }
 
-                ulong streamId;
-                QuicheStream? stream;
-                if (streamIdOrNone < 0)
-                {
-                    (streamId, stream) = streamMap
-                        .Cast<KeyValuePair<ulong, QuicheStream?>>()
-                        .FirstOrDefault(x => x.Value?.CanRead ?? false);
-                }
-                else
-                {
-                    streamId = (ulong)streamIdOrNone;
-                    stream = GetStream(streamId);
-                }
-
-                if (stream is null) { continue; }
+                QuicheStream stream = GetStream((ulong)streamIdOrNone);
 
                 if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
                 {
@@ -466,7 +453,7 @@ public class QuicheConnection : IDisposable
                             fixed (byte* bufPtr = packetBuf)
                             {
                                 errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr, (nuint)packetBuf.Length,
+                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr, (nuint)packetBuf.Length,
                                     (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                             }
                         }
