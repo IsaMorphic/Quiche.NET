@@ -106,7 +106,7 @@ public class QuicheConnection : IDisposable
 
     public Task ConnectionEstablished => establishedTcs.Task;
 
-    internal unsafe bool IsClosed
+    public unsafe bool IsClosed
     {
         get
         {
@@ -117,24 +117,13 @@ public class QuicheConnection : IDisposable
         }
     }
 
-    internal unsafe bool IsServer
+    public unsafe bool IsServer
     {
         get
         {
             lock (this)
             {
                 return NativePtr is not null && NativePtr->IsServer();
-            }
-        }
-    }
-
-    internal unsafe int NextTimeoutMilliseconds
-    {
-        get
-        {
-            lock (this)
-            {
-                return NativePtr is null ? 0 : (int)NativePtr->TimeoutAsMillis();
             }
         }
     }
@@ -246,7 +235,8 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
-                await Task.Delay(150, cancellationToken);
+                if(IsClosed) { throw; }
+                await Task.Delay(75, cancellationToken);
                 continue;
             }
             catch (QuicheException ex)
@@ -310,24 +300,20 @@ public class QuicheConnection : IDisposable
 
                 if (stream is null || (!isConnectionEstablished && !isInEarlyData))
                 {
-                    await Task.Delay(150, cancellationToken);
+                    foreach (var str in streamMap.Values)
+                    {
+                        str.Flush();
+                    }
+                    
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
 
-                byte[]? streamBuf;
-                int numRetries = 0;
-                while (!sendQueue.TryRemove(streamId, out streamBuf) && numRetries < MAX_STREAM_SEND_RETRIES)
+                if (!sendQueue.TryRemove(streamId, out byte[]? streamBuf) || streamBuf.Length == 0)
                 {
                     stream.Flush();
-                    if (numRetries++ > 0)
-                    {
-                        await Task.Delay(100, cancellationToken);
-                    }
-                }
 
-                if (streamBuf is null)
-                {
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
 
@@ -365,6 +351,7 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
+                if(IsClosed) { throw; }
                 await Task.Delay(75, cancellationToken);
                 continue;
             }
@@ -417,7 +404,7 @@ public class QuicheConnection : IDisposable
                 ReadOnlyMemory<byte> nextPacket;
                 if (!recvQueue.TryDequeue(out nextPacket) && !IsClosed)
                 {
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
                 else if (IsClosed)
@@ -514,7 +501,7 @@ public class QuicheConnection : IDisposable
                 }
                 else
                 {
-                    await Task.Delay(150, cancellationToken);
+                    await Task.Delay(75, cancellationToken);
                     continue;
                 }
 
@@ -536,7 +523,7 @@ public class QuicheConnection : IDisposable
                             fixed (byte* bufPtr = streamBuf)
                             {
                                 errorCode = (long)QuicheError.QUICHE_ERR_NONE;
-                                recvCount = (long)NativePtr->StreamRecv((ulong)streamIdOrNone, bufPtr, (nuint)streamBuf.Length,
+                                recvCount = (long)NativePtr->StreamRecv(streamId, bufPtr, (nuint)streamBuf.Length,
                                     (bool*)Unsafe.AsPointer(ref streamFinished), (ulong*)Unsafe.AsPointer(ref errorCode));
                             }
                         }
@@ -560,6 +547,7 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
                 when (ex.ErrorCode == QuicheError.QUICHE_ERR_DONE)
             {
+                if(IsClosed) { throw; }
                 await Task.Delay(75, cancellationToken);
                 continue;
             }
@@ -604,40 +592,6 @@ public class QuicheConnection : IDisposable
         {
             return NativePtr is not null && NativePtr->StreamFinished(streamId);
         }
-    }
-
-    internal unsafe bool IsStreamReadable(ulong streamId)
-    {
-        lock (this)
-        {
-            return NativePtr is not null && NativePtr->StreamReadable(streamId);
-        }
-    }
-
-    internal unsafe bool IsStreamWritable(ulong streamId)
-    {
-        long resultOrError;
-        lock (this)
-        {
-            if (NativePtr is null)
-            {
-                return false;
-            }
-            else
-            {
-                resultOrError = NativePtr->StreamWritable(streamId, 0);
-            }
-        }
-
-        try
-        {
-            QuicheException.ThrowIfError((QuicheError)resultOrError);
-        }
-        catch (QuicheException ex)
-        when (ex.ErrorCode == QuicheError.QUICHE_ERR_INVALID_STREAM_STATE)
-        { return true; }
-
-        return resultOrError == 0;
     }
 
     public async Task<QuicheStream> CreateOutboundStreamAsync(QuicheStream.Direction direction, CancellationToken cancellationToken = default)

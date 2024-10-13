@@ -18,8 +18,6 @@ namespace Quiche.NET
             Unidirectional = 0x2,
         }
 
-        private const int MAX_READ_RETRIES = 50;
-
         private readonly Pipe? recvPipe, sendPipe;
 
         private readonly QuicheConnection conn;
@@ -82,13 +80,18 @@ namespace Quiche.NET
 
         public override void Flush()
         {
-            if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
+            if (sendPipe is null) return;
+
+            lock (sendPipe)
             {
-                conn.sendQueue.AddOrUpdate(streamId,
-                    key => result.Buffer.ToArray(),
-                    (key, buf) => [.. buf, .. result.Buffer.ToArray()]
-                    );
-                sendPipe.Reader.AdvanceTo(result.Buffer.End);
+                if (sendPipe.Reader.TryRead(out ReadResult result))
+                {
+                    conn.sendQueue.AddOrUpdate(streamId,
+                        key => result.Buffer.ToArray(),
+                        (key, buf) => [.. buf, .. result.Buffer.ToArray()]
+                        );
+                    sendPipe.Reader.AdvanceTo(result.Buffer.End);
+                }
             }
         }
 
@@ -100,8 +103,8 @@ namespace Quiche.NET
             }
             else
             {
-                int bytesTotal = 0, numRetries = MAX_READ_RETRIES;
-                while (CanRead && bytesTotal < count && numRetries > 0)
+                int bytesTotal = 0;
+                while (CanRead && bytesTotal < count)
                 {
                     if (recvPipe.Reader.TryRead(out ReadResult result))
                     {
@@ -112,7 +115,10 @@ namespace Quiche.NET
 
                         bytesTotal += bytesRead;
                     }
-                    else { --numRetries; Thread.Sleep(100); }
+                    else 
+                    {
+                        break;
+                    }
                 }
 
                 return bytesTotal;
