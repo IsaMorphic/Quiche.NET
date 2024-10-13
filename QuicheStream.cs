@@ -80,13 +80,18 @@ namespace Quiche.NET
 
         public override void Flush()
         {
-            if (sendPipe?.Reader.TryRead(out ReadResult result) ?? false)
+            if (sendPipe is null) return;
+
+            lock (sendPipe)
             {
-                conn.sendQueue.AddOrUpdate(streamId,
-                    key => result.Buffer.ToArray(),
-                    (key, buf) => [.. buf, .. result.Buffer.ToArray()]
-                    );
-                sendPipe.Reader.AdvanceTo(result.Buffer.End);
+                if (sendPipe.Reader.TryRead(out ReadResult result))
+                {
+                    conn.sendQueue.AddOrUpdate(streamId,
+                        key => result.Buffer.ToArray(),
+                        (key, buf) => [.. buf, .. result.Buffer.ToArray()]
+                        );
+                    sendPipe.Reader.AdvanceTo(result.Buffer.End);
+                }
             }
         }
 
