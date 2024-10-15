@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0;net8.0-windows;net8.0-macos</TargetFrameworks>
-		<RuntimeIdentifiers>win-x64;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64</RuntimeIdentifiers>
+		<TargetFrameworks>net8.0;net8.0-windows</TargetFrameworks>
+		<RuntimeIdentifiers>win-x64;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64;ios-arm64;iossimulator-x64</RuntimeIdentifiers>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -72,12 +72,16 @@
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">aarch64-apple-darwin</RustTargetTriple>
 		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-x64'">libquiche.dylib</RustLIbraryFileName>
 		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">libquiche.dylib</RustLIbraryFileName>
+
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">x86_64-apple-ios</RustTargetTriple>
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">aarch64-apple-ios</RustTargetTriple>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">libquiche.dylib</RustLIbraryFileName>
+		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">libquiche.dylib</RustLIbraryFileName>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<RustTargetOutput Include="quiche/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLIbraryFileName)" />
-		<NativeLibs Condition="'$(RuntimeIdentifier)' != ''" 
-			Include="runtimes/$(RuntimeIdentifier)/native/$(RustLIbraryFileName)" />
+		<NativeLibs Condition="'$(RuntimeIdentifier)' != ''" Include="runtimes/$(RuntimeIdentifier)/native/$(RustLIbraryFileName)" />
     	<None Condition="'$(RuntimeIdentifier)' != ''" Include="@(NativeLibs)">
       		<Pack>true</Pack>
       		<PackageCopyToOutput>true</PackageCopyToOutput>
