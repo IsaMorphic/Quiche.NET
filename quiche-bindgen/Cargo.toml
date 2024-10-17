@@ -12,3 +12,6 @@ crate-type = [ "cdylib" ]
 [build-dependencies]
 bindgen = "*"
 csbindgen = "*"
+
+[features]
+android = []

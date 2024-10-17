@@ -4,10 +4,15 @@ fn main() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
-    bindgen::Builder::default()
+    let builder = 
+    if std::env::var_os("CARGO_FEATURE_ANDROID").is_some() 
+    {
+        bindgen::Builder::default()
+        .clang_arg("--sysroot=/usr/local/share/android-ndk/sysroot")
+    } else { bindgen::Builder::default() };
     // The input header we would like to generate
     // bindings for.
-    .header("include/quiche.h")
+    builder.header("include/quiche.h")
     // Tell cargo to invalidate the built crate whenever any of the
     // included header files changed.
     .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
