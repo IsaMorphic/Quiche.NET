@@ -24,20 +24,25 @@ namespace Quiche
                 var path = "runtimes/";
                 var extension = "";
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                if (OperatingSystem.IsWindows())
                 {
                     path += "win-";
                     extension = ".dll";
                 }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                else if (OperatingSystem.IsMacOS())
                 {
                     path += "osx-";
                     extension = ".dylib";
                 }
-                else
+                else if (OperatingSystem.IsLinux())
                 {
                     path += "linux-";
                     extension = ".so";
+                }
+                else if (OperatingSystem.IsIOS())
+                {
+                    path += RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "ios-" : "iossimulator-";
+                    extension = ".dylib";
                 }
 
                 if (RuntimeInformation.ProcessArchitecture == Architecture.X86)
