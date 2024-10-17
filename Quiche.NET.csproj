@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFrameworks>net8.0;net8.0-windows</TargetFrameworks>
-		<RuntimeIdentifiers>win-x64;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64;ios-arm64;iossimulator-x64</RuntimeIdentifiers>
+		<RuntimeIdentifiers>win-x64;win-arm64;osx-x64;osx-arm64;linux-x64;linux-arm64;iossimulator-x64;ios-arm64;android-x64;android-arm64</RuntimeIdentifiers>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -60,28 +60,37 @@
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'win-x64'">x86_64-pc-windows-msvc</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'win-arm64'">aarch64-pc-windows-msvc</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'win-x64'">quiche.dll</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'win-arm64'">quiche.dll</RustLIbraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'win-x64'">quiche.dll</RustLibraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'win-arm64'">quiche.dll</RustLibraryFileName>
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'linux-x64'">x86_64-unknown-linux-gnu</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">aarch64-unknown-linux-gnu</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-x64'">libquiche.so</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">libquiche.so</RustLIbraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-x64'">libquiche.so</RustLibraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">libquiche.so</RustLibraryFileName>
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-x64'">x86_64-apple-darwin</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">aarch64-apple-darwin</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-x64'">libquiche.dylib</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">libquiche.dylib</RustLIbraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-x64'">libquiche.dylib</RustLibraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">libquiche.dylib</RustLibraryFileName>
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">x86_64-apple-ios</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">aarch64-apple-ios</RustTargetTriple>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">libquiche.dylib</RustLIbraryFileName>
-		<RustLIbraryFileName Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">libquiche.dylib</RustLIbraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">libquiche.dylib</RustLibraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">libquiche.dylib</RustLibraryFileName>
+		
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'android-arm64'">aarch64-linux-android</RustTargetTriple>
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'android-x64'">x86_64-linux-android</RustTargetTriple>
+		
+		<RustTargetAndroid Condition="'$(RuntimeIdentifier)' == 'android-arm64'">arm64-v8a</RustTargetAndroid>
+		<RustTargetAndroid Condition="'$(RuntimeIdentifier)' == 'android-x64'">x86_64</RustTargetAndroid>
+		
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'android-arm64'">libquiche.so</RustLibraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'android-x64'">libquiche.so</RustLibraryFileName>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<RustTargetOutput Include="quiche/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLIbraryFileName)" />
-		<NativeLibs Condition="'$(RuntimeIdentifier)' != ''" Include="runtimes/$(RuntimeIdentifier)/native/$(RustLIbraryFileName)" />
+		<RustTargetOutput Include="quiche/target/$(RustTargetTriple)/$(RustConfiguration)/$(RustLibraryFileName)" />
+		<NativeLibs Condition="'$(RuntimeIdentifier)' != ''" Include="runtimes/$(RuntimeIdentifier)/native/$(RustLibraryFileName)" />
     	<None Condition="'$(RuntimeIdentifier)' != ''" Include="@(NativeLibs)">
       		<Pack>true</Pack>
       		<PackageCopyToOutput>true</PackageCopyToOutput>
@@ -90,8 +99,18 @@
 	</ItemGroup>
 
 	<Target Condition="'$(RuntimeIdentifier)' != ''" Name="rustc" BeforeTargets="PreBuildEvent">
-		<Exec WorkingDirectory="quiche-bindgen" Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple)" />
-		<Exec WorkingDirectory="quiche" Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple) --features ffi" />
+		<!--NON-ANDROID RUST BUILD-->
+		<Exec WorkingDirectory="quiche-bindgen" Condition="!$(RuntimeIdentifier.StartsWith('android'))" 
+			  Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple)" />
+		<Exec WorkingDirectory="quiche" Condition="!$(RuntimeIdentifier.StartsWith('android'))"
+			  Command="cargo build --profile $(RustProfile) --target $(RustTargetTriple) --features ffi" />
+		
+		<!--ANDROID RUST BUILD-->
+		<Exec WorkingDirectory="quiche-bindgen" Condition="$(RuntimeIdentifier.StartsWith('android'))"
+			  Command="cargo ndk -t $(RustTargetAndroid) -p 21 -- build --profile $(RustProfile) --features android" />
+		<Exec WorkingDirectory="quiche" Condition="$(RuntimeIdentifier.StartsWith('android'))"
+			  Command="cargo ndk -t $(RustTargetAndroid) -p 21 -- build --profile $(RustProfile) --features ffi" />
+		
 		<Copy SourceFiles="@(RustTargetOutput)" DestinationFolder="runtimes/$(RuntimeIdentifier)/native" />
 	</Target>
 </Project>
