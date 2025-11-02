@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
 using static Quiche.NativeMethods;
 
 namespace Quiche.NET;
@@ -85,7 +86,7 @@ public class QuicheConnection : IDisposable
 
     private readonly TaskCompletionSource establishedTcs;
     private readonly ConcurrentDictionary<ulong, QuicheStream> streamMap;
-    private readonly ConcurrentBag<TaskCompletionSource<QuicheStream>> streamBag;
+    private readonly Channel<QuicheStream> streamChannel;
 
     private readonly Socket socket;
     private readonly EndPoint remoteEndPoint;
@@ -136,7 +137,7 @@ public class QuicheConnection : IDisposable
         recvQueue = new();
 
         streamMap = new();
-        streamBag = new();
+        streamChannel = Channel.CreateUnbounded<QuicheStream>();
 
         establishedTcs = new();
 
@@ -236,19 +237,11 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetException(ex);
-                }
                 throw;
             }
             catch (OperationCanceledException)
             {
                 establishedTcs.TrySetCanceled(cts.Token);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetCanceled(cts.Token);
-                }
                 throw;
             }
         }
@@ -352,19 +345,11 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetException(ex);
-                }
                 throw;
             }
             catch (OperationCanceledException)
             {
                 establishedTcs.TrySetCanceled(cts.Token);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetCanceled(cts.Token);
-                }
                 throw;
             }
         }
@@ -446,19 +431,11 @@ public class QuicheConnection : IDisposable
             catch (QuicheException ex)
             {
                 establishedTcs.TrySetException(ex);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetException(ex);
-                }
                 throw;
             }
             catch (OperationCanceledException)
             {
                 establishedTcs.TrySetCanceled(cts.Token);
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetCanceled(cts.Token);
-                }
                 throw;
             }
         }
@@ -499,11 +476,7 @@ public class QuicheConnection : IDisposable
                     continue;
                 }
 
-                if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    streamBag.Add(tcs = new());
-                }
-                tcs.TrySetResult(stream);
+                await streamChannel.Writer.WriteAsync(stream, cancellationToken);
 
                 bool streamFinished = false;
                 long recvCount = long.MaxValue;
@@ -544,22 +517,6 @@ public class QuicheConnection : IDisposable
                 if(IsClosed) { throw; }
                 await Task.Delay(75, cancellationToken);
                 continue;
-            }
-            catch (QuicheException ex)
-            {
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetException(ex);
-                }
-                throw;
-            }
-            catch (OperationCanceledException)
-            {
-                while (streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-                {
-                    tcs.TrySetCanceled(cts.Token);
-                }
-                throw;
             }
         }
     }
@@ -609,11 +566,7 @@ public class QuicheConnection : IDisposable
 
     public async Task<QuicheStream> AcceptInboundStreamAsync(CancellationToken cancellationToken = default)
     {
-        if (!streamBag.TryTake(out TaskCompletionSource<QuicheStream>? tcs))
-        {
-            streamBag.Add(tcs = new());
-        }
-        return await tcs.Task.WaitAsync(cancellationToken);
+        return await streamChannel.Reader.ReadAsync(cancellationToken);
     }
 
     private bool disposedValue;
@@ -674,7 +627,6 @@ public class QuicheConnection : IDisposable
                     sendQueue.Clear();
 
                     streamMap.Clear();
-                    streamBag.Clear();
 
                     if (!IsServer)
                     {
