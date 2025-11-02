@@ -137,7 +137,7 @@ namespace Quiche.NET
         {
             set
             {
-                NativePtr->SetInitialMaxStreamsBidi((ulong)value);
+                NativePtr->SetInitialMaxStreamsUni((ulong)value);
             }
         }
 
