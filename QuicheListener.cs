@@ -1,13 +1,14 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Channels;
 
 namespace Quiche.NET;
 
 public class QuicheListener : IDisposable
 {
     private readonly ConcurrentDictionary<EndPoint, QuicheConnection> connMap;
-    private readonly ConcurrentBag<TaskCompletionSource<QuicheConnection>> connBag;
+    private readonly Channel<QuicheConnection> connChannel;
 
     private readonly Socket socket;
     private readonly QuicheConfig config;
@@ -18,56 +19,37 @@ public class QuicheListener : IDisposable
         this.config = config;
 
         connMap = new();
-        connBag = new();
+        connChannel = Channel.CreateUnbounded<QuicheConnection>();
     }
 
     public async Task ListenAsync(CancellationToken cancellationToken)
     {
-        try
+        byte[] recvBuffer = new byte[QuicheLibrary.MAX_BUFFER_LEN];
+        while (!cancellationToken.IsCancellationRequested)
         {
-            byte[] recvBuffer = new byte[QuicheLibrary.MAX_BUFFER_LEN];
-            while (!cancellationToken.IsCancellationRequested)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            SocketReceiveFromResult recvResult = await socket.ReceiveFromAsync(recvBuffer, new IPEndPoint(IPAddress.None, 0), cancellationToken);
+            ReadOnlyMemory<byte> receivedBytes = ((byte[])recvBuffer.Clone())
+                    .AsMemory(0, recvResult.ReceivedBytes);
+
+            if (connMap.TryGetValue(recvResult.RemoteEndPoint, out QuicheConnection? connection))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                SocketReceiveFromResult recvResult = await socket.ReceiveFromAsync(recvBuffer, new IPEndPoint(IPAddress.None, 0), cancellationToken);
-                ReadOnlyMemory<byte> receivedBytes = ((byte[])recvBuffer.Clone())
-                        .AsMemory(0, recvResult.ReceivedBytes);
-
-                if (connMap.TryGetValue(recvResult.RemoteEndPoint, out QuicheConnection? connection))
-                {
-                    connection.recvQueue.Enqueue(receivedBytes);
-                }
-                else
-                {
-                    QuicheConnection conn = QuicheConnection.Accept(socket, recvResult.RemoteEndPoint, receivedBytes, config);
-                    connMap.TryAdd(recvResult.RemoteEndPoint, conn);
-
-                    if (!connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
-                    {
-                        connBag.Add(tcs = new());
-                    }
-                    tcs.TrySetResult(conn);
-                }
+                connection.recvQueue.Enqueue(receivedBytes);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            while (connBag.TryTake(out TaskCompletionSource<QuicheConnection>? tcs))
+            else
             {
-                tcs.TrySetCanceled(cancellationToken);
+                QuicheConnection conn = QuicheConnection.Accept(socket, recvResult.RemoteEndPoint, receivedBytes, config);
+                connMap.TryAdd(recvResult.RemoteEndPoint, conn);
+
+                await connChannel.Writer.WriteAsync(conn, cancellationToken);
             }
-            throw;
         }
     }
 
     public async Task<QuicheConnection> AcceptAsync(CancellationToken cancellationToken)
     {
-        if (!connBag.TryPeek(out TaskCompletionSource<QuicheConnection>? tcs))
-        {
-            connBag.Add(tcs = new());
-        }
-        return await tcs.Task.WaitAsync(cancellationToken);
+        return await connChannel.Reader.ReadAsync(cancellationToken);
     }
 
 
