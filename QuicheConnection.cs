@@ -9,12 +9,6 @@ using System.Security.Cryptography;
 using System.Text;
 using static Quiche.NativeMethods;
 
-#if WINDOWS
-using size_t = int;
-#else
-using size_t = uint;
-#endif
-
 namespace Quiche.NET;
 
 public class QuicheConnection : IDisposable
@@ -65,7 +59,7 @@ public class QuicheConnection : IDisposable
         using (local)
         using (remote)
         {
-            byte[] hostnameBuf = Encoding.UTF8.GetBytes([.. hostname?.ToCharArray(), '\u0000']);
+            byte[] hostnameBuf = Encoding.UTF8.GetBytes([.. hostname?.ToCharArray() ?? [], '\u0000']);
             byte[] scidBuf = (byte[]?)cid?.Clone() ?? RandomNumberGenerator
                 .GetBytes((int)QuicheLibrary.MAX_CONN_ID_LEN);
 
