@@ -2,7 +2,7 @@
 authors = ["IsaMorphic <me@isamorphic.dev>"]
 build = "build.rs"
 name = "quiche-bindgen"
-version = "0.22.0"
+version = "0.24.5"
 edition = "2021"
 links = "quiche"
 
