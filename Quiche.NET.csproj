@@ -73,8 +73,10 @@
 		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'osx-arm64'">libquiche.dylib</RustLibraryFileName>
 
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">x86_64-apple-ios</RustTargetTriple>
+		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'iossimulator-arm64'">aarch64-apple-ios</RustTargetTriple>
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">aarch64-apple-ios</RustTargetTriple>
 		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">libquiche.dylib</RustLibraryFileName>
+		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'iossimulator-arm64'">libquiche.dylib</RustLibraryFileName>
 		<RustLibraryFileName Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">libquiche.dylib</RustLibraryFileName>
 		
 		<RustTargetTriple Condition="'$(RuntimeIdentifier)' == 'android-arm64'">aarch64-linux-android</RustTargetTriple>
@@ -105,7 +107,7 @@
 		<!--ANDROID RUST BUILD-->
 		<Exec WorkingDirectory="quiche-bindgen" Condition="$(RuntimeIdentifier.StartsWith('android'))" Command="cargo ndk -t $(RustTargetAndroid) -- build --profile $(RustProfile) --features android" />
 		<Exec WorkingDirectory="quiche" Condition="$(RuntimeIdentifier.StartsWith('android'))" Command="cargo ndk -t $(RustTargetAndroid) -- build --profile $(RustProfile) --features ffi" />
-		
+
 		<Copy SourceFiles="@(RustTargetOutput)" DestinationFolder="runtimes/$(RuntimeIdentifier)/native" />
 	</Target>
 </Project>
